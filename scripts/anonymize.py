@@ -340,6 +340,16 @@ def _rewrite_unit_codes_in_string(s, all_real_units):
     return s
 
 
+def _scrub_brand_text(s):
+    """Replace brand markers in free text: 'Norfab' (any casing, incl.
+    'Norfab Mfg (1993) Inc.' variants) and whole-word 'NFM'."""
+    if not isinstance(s, str) or not s:
+        return s
+    s = re.sub(r"(?i)norfab(\s+mfg)?(\s*\(1993\))?(\s*inc\.?)?", FAKE_COMPANY_SHORT, s)
+    s = re.sub(r"\bNFM\b", FAKE_COMPANY_SHORT, s)
+    return s
+
+
 def anonymize_maintenance_json(prod, all_real_units):
     """Rewrite unit references anywhere they appear: schedule, log, defects_resolved,
     and the _*_fields metadata blocks that document the format with real unit codes."""
@@ -359,10 +369,12 @@ def anonymize_maintenance_json(prod, all_real_units):
         e = dict(entry)
         if e.get("unit"):
             e["unit"] = fake_unit_for(e["unit"])
-        if e.get("performer") and "norfab" in e["performer"].lower():
-            e["performer"] = FAKE_COMPANY + " shop"
+        # Performer mentioning the brand (any form: 'Norfab shop', 'NFM (Mark)')
+        # gets fully replaced — this also drops any shop employee's name.
+        p = e.get("performer") or ""
+        if "norfab" in p.lower() or re.search(r"\bNFM\b", p):
+            e["performer"] = FAKE_COMPANY_SHORT + " shop"
         if e.get("notes"):
-            e["notes"] = re.sub(r"(?i)norfab[a-z\s()0-9]*inc\.?", FAKE_COMPANY, e["notes"])
             e["notes"] = _rewrite_unit_codes_in_string(e["notes"], all_real_units)
         new_log.append(e)
     out["log"] = new_log
@@ -385,6 +397,13 @@ def anonymize_maintenance_json(prod, all_real_units):
         for k, v in block.items():
             new_block[k] = _rewrite_unit_codes_in_string(v, all_real_units)
         out[meta_key] = new_block
+    # Safety net: brand-scrub + unit-rewrite EVERY string in the output,
+    # wherever it lives. Free text can hide in any field; this guarantees
+    # no 'Norfab'/'NFM'/real-unit-code survives regardless of structure.
+    out = deep_transform_strings(
+        out,
+        lambda s: _scrub_brand_text(_rewrite_unit_codes_in_string(s, all_real_units)),
+    )
     return out
 
 
