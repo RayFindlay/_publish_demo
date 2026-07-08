@@ -73,10 +73,30 @@ def stable_int(seed_key, mod):
     return int(hashlib.sha256(seed_key.encode()).hexdigest(), 16) % mod
 
 
+_NAME_MAP = {}
+
+
 def fake_name_for(real_name):
+    """Collision-free deterministic mapping: hash picks a starting slot in
+    the fake-name pool, linear probe finds the first unused name. Seeded in
+    sorted order of real names (the mapping print loop in main), so the
+    assignment is stable across runs."""
     if not real_name or not real_name.strip():
         return real_name
-    return stable_choice(FAKE_DRIVER_NAMES, f"driver:{real_name.strip().lower()}")
+    key = real_name.strip().lower()
+    if key in _NAME_MAP:
+        return _NAME_MAP[key]
+    used = set(_NAME_MAP.values())
+    start = stable_int(f"driver:{key}", len(FAKE_DRIVER_NAMES))
+    for i in range(len(FAKE_DRIVER_NAMES)):
+        candidate = FAKE_DRIVER_NAMES[(start + i) % len(FAKE_DRIVER_NAMES)]
+        if candidate not in used:
+            _NAME_MAP[key] = candidate
+            return candidate
+    # Pool exhausted — synthesize a numbered fallback
+    candidate = f"Driver {len(_NAME_MAP) + 1}"
+    _NAME_MAP[key] = candidate
+    return candidate
 
 
 def fake_token_for(real_token):
@@ -102,8 +122,14 @@ def fake_unit_for(real_unit):
     real_unit = real_unit.strip()
     if real_unit not in _fake_unit_map:
         prefix = "".join(c for c in real_unit if c.isalpha()) or "UNIT"
+        used = set(_fake_unit_map.values())
         num = stable_int(f"unit:{real_unit}", 90) + 10
-        _fake_unit_map[real_unit] = f"{prefix}{num}"
+        # Probe for a free code so two real units can never merge
+        for i in range(90):
+            candidate = f"{prefix}{(num - 10 + i) % 90 + 10}"
+            if candidate not in used:
+                _fake_unit_map[real_unit] = candidate
+                break
     return _fake_unit_map[real_unit]
 
 
@@ -429,6 +455,27 @@ def main():
         f"Loaded {len(data.get('titan_records', []))} titan records, "
         f"{len(data.get('sitedocs_records', []))} sitedocs records"
     )
+
+    # Production data.js hides non-fleet drivers with /findlay|test/i on the
+    # driver name. Anonymization renames 'Ray Findlay' to a fake that no
+    # longer matches, so a coordinator with 1 DVI and 0 trips would surface
+    # as a driver card with no unit (undefined lookup -> crash). Apply the
+    # same exclusion here, BEFORE renaming, so demo semantics == production.
+    def is_excluded_driver(name):
+        return bool(re.search(r"(?i)findlay|test", name or ""))
+
+    before_t = len(data.get("titan_records", []))
+    before_s = len(data.get("sitedocs_records", []))
+    data["titan_records"] = [
+        r for r in data.get("titan_records", []) if not is_excluded_driver(r.get("driver"))
+    ]
+    data["sitedocs_records"] = [
+        r for r in data.get("sitedocs_records", []) if not is_excluded_driver(r.get("driver"))
+    ]
+    dropped_t = before_t - len(data["titan_records"])
+    dropped_s = before_s - len(data["sitedocs_records"])
+    if dropped_t or dropped_s:
+        print(f"Dropped {dropped_t} titan + {dropped_s} sitedocs record(s) for excluded drivers (findlay/test filter)")
 
     # Guard set BEFORE anonymization
     real_strings = collect_real_strings_to_guard(data)
