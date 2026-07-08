@@ -1,17 +1,864 @@
 {
-  "_comment": "Demo maintenance data. Synthetic for portfolio dashboard.",
+  "_comment": "Hand-edited fleet maintenance schedule + log. Schedule defines the recurring rules (per vehicle or `*` for all units). Log records actual events. The dashboard computes 'what's due' by finding the most recent log entry for each schedule rule and adding the interval. Edit this file directly when you log a service or change a schedule.",
+  "_schedule_fields": {
+    "unit": "FDT71 | FDT95 | ... | * (all) | heavy | light",
+    "item": "CVIP | Oil change | Tire rotation | Brake inspection | etc.",
+    "interval_type": "date | km",
+    "interval_days": "(date intervals only) e.g. 365",
+    "interval_km": "(km intervals only) e.g. 12000",
+    "priority": "critical | routine (used only for sort order)",
+    "notes": "Freeform"
+  },
+  "_log_fields": {
+    "date": "YYYY-MM-DD when the work was done",
+    "unit": "Unit ID",
+    "item": "Free text; should match a schedule item for the schedule to know 'last performed'",
+    "odometer_km": "Reading at time of service (optional)",
+    "performer": "CFI shop | external vendor name | etc.",
+    "cost": "(optional) number, in CAD",
+    "notes": "Freeform"
+  },
+  "_defects_resolved_fields": {
+    "unit": "Unit ID the defect was reported on",
+    "text_match": "Case-insensitive substring of the defect text from the SiteDocs DVI Remarks field. Matches all variants (e.g. 'Block heater' matches both 'Block heater is not working' and 'Block heater doesn't work').",
+    "resolved_date": "YYYY-MM-DD when the issue was fixed. A defect re-reported on a DVI dated AFTER this will re-open in the dashboard.",
+    "notes": "What was done to fix it (optional)"
+  },
   "schedule": [
     {
-      "item": "CVIP",
       "unit": "*",
-      "interval_days": 365
+      "item": "CVIP",
+      "interval_type": "date",
+      "interval_days": 365,
+      "priority": "critical",
+      "notes": "Annual commercial vehicle inspection. Required to operate. Each heavy unit has its own renewal cycle."
     },
     {
-      "item": "Oil change",
       "unit": "*",
-      "interval_km": 8000
+      "item": "Oil change",
+      "interval_type": "km",
+      "interval_km": 12000,
+      "priority": "routine",
+      "notes": "Synthetic blend, every 12,000 km or by feel"
+    },
+    {
+      "unit": "*",
+      "item": "Tire rotation",
+      "interval_type": "km",
+      "interval_km": 10000,
+      "priority": "routine",
+      "notes": "Every 10,000 km"
+    },
+    {
+      "unit": "*",
+      "item": "Brake inspection",
+      "interval_type": "km",
+      "interval_km": 25000,
+      "priority": "routine",
+      "notes": "Visual + measurement of pad thickness"
+    },
+    {
+      "unit": "heavy",
+      "item": "Air brake adjustment check",
+      "interval_type": "date",
+      "interval_days": 90,
+      "priority": "routine",
+      "notes": "Required quarterly on heavy units"
     }
   ],
-  "log": [],
+  "log": [
+    {
+      "date": null,
+      "unit": "FDT95",
+      "item": "Rear Leaf Springs X2",
+      "odometer_km": 287149,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 3978.01,
+      "notes": "Rear Shocks; Right Front Hub Bearing; Front Brake Rotors"
+    },
+    {
+      "date": null,
+      "unit": "FDT95",
+      "item": "Oil change",
+      "odometer_km": 290864,
+      "performer": "CFI shop",
+      "cost": 175.0,
+      "notes": "Oil & Filer 5w40 SYN"
+    },
+    {
+      "date": null,
+      "unit": "FPT48",
+      "item": "Oil change",
+      "odometer_km": 310000,
+      "performer": "North Battleford lube city",
+      "cost": 200.0,
+      "notes": "Oil and Filter 15w40; transmission spin on filter"
+    },
+    {
+      "date": null,
+      "unit": "FPT93",
+      "item": "Oil change",
+      "odometer_km": null,
+      "performer": "Lube City",
+      "cost": 202.0,
+      "notes": ""
+    },
+    {
+      "date": "2019-06-19",
+      "unit": "FDT71",
+      "item": "Tires",
+      "odometer_km": 391867,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 2095.44,
+      "notes": "6 x Tires"
+    },
+    {
+      "date": "2019-06-19",
+      "unit": "FDT71",
+      "item": "CVIP",
+      "odometer_km": 391867,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 7963.36,
+      "notes": "Cvip Inspection; Rear brake, calipers & rotors; Front brakes, calipers & rotors; Oil & filter change 15W40 SYN; Fuel Filter; Drag link; Inner and outter Tie rods; Wheel alignment; Rear wheel seals x2; Power window switch; Front wheel bearings x2"
+    },
+    {
+      "date": "2019-06-19",
+      "unit": "FDT71",
+      "item": "Oil change",
+      "odometer_km": 391867,
+      "performer": "Tire Craft Stony Plain",
+      "cost": null,
+      "notes": "(part of CVIP visit on 2019-06-19)"
+    },
+    {
+      "date": "2020-06-30",
+      "unit": "FDT71",
+      "item": "CVIP",
+      "odometer_km": null,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 1099.0,
+      "notes": "Cvip Inspection; Oil & filter change 15W40 SYN; Fuel Filter; Spin on Trans filter; Trailer plug"
+    },
+    {
+      "date": "2020-06-30",
+      "unit": "FDT71",
+      "item": "Oil change",
+      "odometer_km": null,
+      "performer": "Tire Craft Stony Plain",
+      "cost": null,
+      "notes": "(part of CVIP visit on 2020-06-30)"
+    },
+    {
+      "date": "2020-11-03",
+      "unit": "FDT95",
+      "item": "CVIP",
+      "odometer_km": 223966,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 2946.1,
+      "notes": "Cvipmd Inspection; Oil & Filer 15w40 SYN; Tie Rods x2; Parking Brake Cable; Front Diff Service; Rear Diff Service; Transfer Case Service; Transmission Service"
+    },
+    {
+      "date": "2020-11-03",
+      "unit": "FDT95",
+      "item": "Oil change",
+      "odometer_km": 223966,
+      "performer": "Tire Craft Stony Plain",
+      "cost": null,
+      "notes": "(part of CVIP visit on 2020-11-03)"
+    },
+    {
+      "date": "2021-02-19",
+      "unit": "FDT95",
+      "item": "Starter",
+      "odometer_km": 224395,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 5789.79,
+      "notes": "Shocks x4; Remove and Replace Deck"
+    },
+    {
+      "date": "2021-05-14",
+      "unit": "FPT93",
+      "item": "Rear Diff oil",
+      "odometer_km": 359184,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 3709.87,
+      "notes": "Power Steering Fluid Flush; Install Bullydog tuner and DPF Delete"
+    },
+    {
+      "date": "2021-03-09",
+      "unit": "FDT71",
+      "item": "CVIP",
+      "odometer_km": 446093,
+      "performer": "Tirecraft (1817893 Alberta Ltd.)",
+      "cost": null,
+      "notes": "Cert #CV7108103, technician Jordie Shiels. Invoice IN104810 was issued later (2022-03-21) when subsequent repairs were completed."
+    },
+    {
+      "date": "2021-08-31",
+      "unit": "FDT91",
+      "item": "CVIP",
+      "odometer_km": 297436,
+      "performer": "Tirecraft (sublet)",
+      "cost": null,
+      "notes": "Invoice IN111921; invoice date used (no inspection date or cert number in this invoice-only PDF)."
+    },
+    {
+      "date": "2021-10-29",
+      "unit": "FDT95",
+      "item": "CVIP",
+      "odometer_km": 237480,
+      "performer": "Tire Craft Stony Plain",
+      "cost": null,
+      "notes": "Invoice IN115854; CVIPMD inspection line dated 21 Oct 29. Same visit also covered axle shaft seal, U-joint, oil service, brakes, tires."
+    },
+    {
+      "date": "2021-08-31",
+      "unit": "FTR91",
+      "item": "CVIP",
+      "odometer_km": 6800,
+      "performer": "Tirecraft (sublet)",
+      "cost": null,
+      "notes": "Invoice IN111919; invoice date used (no inspection date or cert number in this invoice-only PDF). Includes worn glad hands, head light fuse, left rear wheel seal."
+    },
+    {
+      "date": "2021-07-09",
+      "unit": "FTR78",
+      "item": "CVIP",
+      "odometer_km": 595454,
+      "performer": "Adrenaline Diesel",
+      "cost": null,
+      "notes": "Invoice #3157; inspection performed 2021-07-09 per labour line. Large repair visit (~$13k) including air leak, exhaust, brakes, suspension, drive axle airbags, shocks, MV3 valve."
+    },
+    {
+      "date": "2021-08-10",
+      "unit": "FDT71",
+      "item": "Oil change",
+      "odometer_km": 450998,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 340.0,
+      "notes": "Oil & filter change 15W40 SYN; Blower motor assembly"
+    },
+    {
+      "date": "2021-11-29",
+      "unit": "FDT95",
+      "item": "Axle Shaft Seal Front Right",
+      "odometer_km": 237480,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 5289.86,
+      "notes": "Oil & Filer 15w40; Wheel Bearing Front Left; Rear Brake Pads; Tires x6"
+    },
+    {
+      "date": "2021-11-29",
+      "unit": "FDT95",
+      "item": "Oil change",
+      "odometer_km": 237480,
+      "performer": "Tire Craft Stony Plain",
+      "cost": null,
+      "notes": "(part of Axle Shaft Seal Front Right visit on 2021-11-29)"
+    },
+    {
+      "date": "2022-04-12",
+      "unit": "FDT71",
+      "item": "CVIP",
+      "odometer_km": 456046,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 760.0,
+      "notes": "Cvip Inspection; Oil & filter change 15W40 SYN; Front mud flaps x2; Windsheild wipers"
+    },
+    {
+      "date": "2022-04-12",
+      "unit": "FDT71",
+      "item": "Oil change",
+      "odometer_km": 456046,
+      "performer": "Tire Craft Stony Plain",
+      "cost": null,
+      "notes": "(part of CVIP visit on 2022-04-12)"
+    },
+    {
+      "date": "2022-06-07",
+      "unit": "FDT95",
+      "item": "Oil change",
+      "odometer_km": 245625,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 733.91,
+      "notes": "Oil & Filer 15w40 SYN; Power Steering Service; Air Filter; Cooling System Service"
+    },
+    {
+      "date": "2022-06-14",
+      "unit": "FPT93",
+      "item": "Oil change",
+      "odometer_km": 367596,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 1951.78,
+      "notes": "Oil & Filter Change 15W40 SYN; Fuel Filter x2; Front Diff Gerar oil 75W90; Transfer Case oil; Coolant Flush and Refill; Brake Fluid Exchange; Transmission oil and Filter; Tpmss x2 changed"
+    },
+    {
+      "date": "2022-06-24",
+      "unit": "FPT16",
+      "item": "Tire rotation",
+      "odometer_km": 250819,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 6704.97,
+      "notes": "Tire change over & balance; Back up alarm; Rear diff service; Upper and lower ball joints x2; Brake fluid exchange; Front brake service; Rear brake service; Output shaft seal; Oil & filter change 15W40 SYN; Fuel Filter; Power steering service; Rear wheel seals x2; Engine oil cooler replace; Transmission service; Radiator replace & coolant flush; Wheel alignment; Leaf Springs"
+    },
+    {
+      "date": "2022-06-24",
+      "unit": "FPT16",
+      "item": "Oil change",
+      "odometer_km": 250819,
+      "performer": "Tire Craft Stony Plain",
+      "cost": null,
+      "notes": "(part of Tire rotation visit on 2022-06-24)"
+    },
+    {
+      "date": "2022-08-08",
+      "unit": "FDT91",
+      "item": "CVIP",
+      "odometer_km": 304028,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": 1414.16,
+      "notes": "Invoice #10981; CVI #7611344. Invoice date used (no inspection date in PDF). Also clutch adjustment, tire pressures, washer pump, air filter, complete service."
+    },
+    {
+      "date": "2022-08-02",
+      "unit": "FTR91",
+      "item": "CVIP",
+      "odometer_km": 8072,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": 1447.48,
+      "notes": "Cert #CV7589000, technician Steven Bourdin. Invoice #10968 (CVI #7589000). Replaced right drive axle brake chamber at inspection."
+    },
+    {
+      "date": "2022-06-29",
+      "unit": "FTR78",
+      "item": "CVIP",
+      "odometer_km": 614380,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": 7037.05,
+      "notes": "Invoice #10944; CVI #7588997. Invoice date used (no inspection date in PDF). Includes drive axle brake chamber, spring pins + bushings on rear steer axle, slack adjusters, brake hoses, marker lights, backup beeper, levelling valve, fuel sensor."
+    },
+    {
+      "date": "2022-09-02",
+      "unit": "FPT93",
+      "item": "Oil change",
+      "odometer_km": 370596,
+      "performer": "Trail Tire 15620-130 Ave",
+      "cost": 202.67,
+      "notes": "Oil & Filer 15w40 SYN"
+    },
+    {
+      "date": "2022-12-14",
+      "unit": "FDT95",
+      "item": "CVIP",
+      "odometer_km": 253807,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 2153.32,
+      "notes": "Cvipmd Inspection; Idler Tensioner Pulley; Serpentine Belt; Oil & Filer 15w40; Air Filter; AC Compressor & Clutch; AC Recharge; Rear Window Harness"
+    },
+    {
+      "date": "2022-12-14",
+      "unit": "FDT95",
+      "item": "Oil change",
+      "odometer_km": 253807,
+      "performer": "Tire Craft Stony Plain",
+      "cost": null,
+      "notes": "(part of CVIP visit on 2022-12-14)"
+    },
+    {
+      "date": "2023-04-21",
+      "unit": "FPT93",
+      "item": "Oil change",
+      "odometer_km": 380148,
+      "performer": "Mr Lube",
+      "cost": 202.67,
+      "notes": "Oil & Filer 15w40 SYN"
+    },
+    {
+      "date": "2023-04-27",
+      "unit": "FDT71",
+      "item": "CVIP",
+      "odometer_km": 466912,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": 4194.41,
+      "notes": "Cert #CV7733898, technician Steven Bourdin. Invoice #11209 (CVI #7733898). Replaced steer axle shocks, drive axle brake pads/shoes, park brake cable assembly, axle bearings/seals; OK'd with Greg + Mark."
+    },
+    {
+      "date": "2023-08-21",
+      "unit": "FDT91",
+      "item": "CVIP",
+      "odometer_km": 306465,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": 1087.5,
+      "notes": "Cert #CV7901516, technician Jordan Bello. Invoice INV-11315 (Steve's Diesel) dated 2023-08-22. Complete service + replaced backup beeper + adjusted tire pressures."
+    },
+    {
+      "date": "2023-08-22",
+      "unit": "FTR91",
+      "item": "CVIP",
+      "odometer_km": 9020,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": 1156.61,
+      "notes": "Cert #CV7901517, technician Jordan Bello. Invoice INV-11327. Complete service + replaced backup beeper (ground circuit failure) + tire pressures."
+    },
+    {
+      "date": "2023-07-26",
+      "unit": "FTR78",
+      "item": "CVIP",
+      "odometer_km": 626286,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": 2072.79,
+      "notes": "Cert #CV7901512, technician Steven Bourdin. Invoice INV-11321 (Steve's Diesel) dated 2023-08-23. Complete service + multiple light repairs, hood strap, 5th wheel adjustment, clutch adjustment."
+    },
+    {
+      "date": "2023-08-23",
+      "unit": "FPT87",
+      "item": "Oil change",
+      "odometer_km": 304788,
+      "performer": "Mr Lube",
+      "cost": 144.87,
+      "notes": ""
+    },
+    {
+      "date": "2023-11-08",
+      "unit": "FPT93",
+      "item": "Oil change",
+      "odometer_km": 388816,
+      "performer": "Mr Lube",
+      "cost": 202.67,
+      "notes": "Oil & Filer 15w40 SYN"
+    },
+    {
+      "date": "2023-11-29",
+      "unit": "FDT95",
+      "item": "Turbo charger",
+      "odometer_km": 266640,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 10482.38,
+      "notes": "Re-route heater hose kit; Oil & filter 15W40SYN; Brake pads front; Wheel Bearing - front Left; Axle shaft u joint - front right; Tie rod - right front lower; Wheel alignment; Transmission Service"
+    },
+    {
+      "date": "2023-11-29",
+      "unit": "FDT95",
+      "item": "Oil change",
+      "odometer_km": 266640,
+      "performer": "Tire Craft Stony Plain",
+      "cost": null,
+      "notes": "(part of Turbo charger visit on 2023-11-29)"
+    },
+    {
+      "date": "2024-02-15",
+      "unit": "FDT95",
+      "item": "Battery",
+      "odometer_km": 270485,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 508.66,
+      "notes": "Shop labour chcking engine lights"
+    },
+    {
+      "date": "2024-06-24",
+      "unit": "FPT87",
+      "item": "Transmission service",
+      "odometer_km": 331676,
+      "performer": "3 Sons Intergra Tire",
+      "cost": 1263.43,
+      "notes": "Transmission oil service; Shift control cable; Oil change; Air Filter"
+    },
+    {
+      "date": "2024-04-29",
+      "unit": "FDT71",
+      "item": "CVIP",
+      "odometer_km": 477914,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": null,
+      "notes": "Cert #CV8028261, technician Steven Bourdin. Passenger door + drivers-side floor pan rust repair noted on the inspection record."
+    },
+    {
+      "date": "2024-09-10",
+      "unit": "FTR91",
+      "item": "CVIP",
+      "odometer_km": null,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": null,
+      "notes": "Inspection date provided by Ray from source PDF (file '2024 - STEVES DIESEL.pdf' could not be parsed by the PDF reader)."
+    },
+    {
+      "date": "2025-01-22",
+      "unit": "FTR78",
+      "item": "CVIP",
+      "odometer_km": 655346,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": null,
+      "notes": "Cert #CV8167857, technician Jordan Bello. File was named '2024 - Steves Diesel CVIP Only.pdf' but the cert is dated 2025-01-22. CVIP-only PDF (no invoice in folder)."
+    },
+    {
+      "date": "2024-07-16",
+      "unit": "FPT31",
+      "item": "Brake repair",
+      "odometer_km": 200196,
+      "performer": "KLW",
+      "cost": 475.74,
+      "notes": "Front brakes, calipers,rotors; Steering stem replacment; Sway bar links"
+    },
+    {
+      "date": "2024-08-06",
+      "unit": "FDT71",
+      "item": "Battery",
+      "odometer_km": 479689,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 742.92,
+      "notes": "Batteries x2; Coolant sensor"
+    },
+    {
+      "date": "2024-08-06",
+      "unit": "FPT28",
+      "item": "Transmission service",
+      "odometer_km": 186877,
+      "performer": "Alberta Transmission",
+      "cost": 562.39,
+      "notes": "Transmission oil service"
+    },
+    {
+      "date": "2024-08-06",
+      "unit": "FPT93",
+      "item": "Oil change",
+      "odometer_km": 399967,
+      "performer": "Trail Tire 15620-130 Ave",
+      "cost": 861.74,
+      "notes": "Oil & Filer 15w40 SYN; 2x Fuel Filters; Air Filter"
+    },
+    {
+      "date": "2024-08-19",
+      "unit": "FDT95",
+      "item": "Oil change",
+      "odometer_km": 280040,
+      "performer": "Trail Tire 15620-130 Ave",
+      "cost": 746.58,
+      "notes": "Oil & Filer 15w40 SYN; 2x Fuel Filters; Air Filter; 2x Steering Tires"
+    },
+    {
+      "date": "2024-08-24",
+      "unit": "FDT95",
+      "item": "Stabilizer Bar Control link",
+      "odometer_km": 280804,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 2279.34,
+      "notes": "Rear Brake Caliper; Rear Brakes and Rotors"
+    },
+    {
+      "date": "2024-09-20",
+      "unit": "FPT48",
+      "item": "Front Upper/Lower Ball joints",
+      "odometer_km": 313625,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 4037.57,
+      "notes": "Front Shocks x2; Tire reballance and rotation; Fuel Filter; Rear Diff Serivce; Rear Air Bag Kit; Remove Running Boards"
+    },
+    {
+      "date": "2024-09-20",
+      "unit": "FPT28",
+      "item": "Transmission service",
+      "odometer_km": 191562,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 4676.93,
+      "notes": "Transmission rebuild"
+    },
+    {
+      "date": "2024-09-25",
+      "unit": "FPT48",
+      "item": "Transmission service",
+      "odometer_km": 313736,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 2023.81,
+      "notes": "Transmission filter and fluid change; TCM module"
+    },
+    {
+      "date": "2024-10-04",
+      "unit": "FPT28",
+      "item": "Oil change",
+      "odometer_km": 192529,
+      "performer": "CFI shop",
+      "cost": 79.74,
+      "notes": "5W30 SYN Oil Change"
+    },
+    {
+      "date": "2024-10-04",
+      "unit": "FPT16",
+      "item": "Oil change",
+      "odometer_km": 276391,
+      "performer": "CFI shop",
+      "cost": 246.14,
+      "notes": "5W40 Oil Change"
+    },
+    {
+      "date": "2024-10-11",
+      "unit": "FPT87",
+      "item": "Tires",
+      "odometer_km": 343242,
+      "performer": "3 Sons Intergra Tire",
+      "cost": 700.0,
+      "notes": "Tires x4 Bridgestone Dueler AT; Front Brakes- Pads, Rotors,Calipers; Oil Change; Blower Motor; Blower Motor Resistor"
+    },
+    {
+      "date": "2024-10-25",
+      "unit": "FPT93",
+      "item": "Tires",
+      "odometer_km": 411402,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 2019.84,
+      "notes": "Tires x4"
+    },
+    {
+      "date": "2024-10-30",
+      "unit": "FPT31",
+      "item": "Upper control arms",
+      "odometer_km": 200765,
+      "performer": "KLW",
+      "cost": 649.52,
+      "notes": "Lower ball joints; Front wheel bearings x2; Spark plugs; 5W20 SYN Oil Change"
+    },
+    {
+      "date": "2025-01-15",
+      "unit": "FPT87",
+      "item": "Oil change",
+      "odometer_km": 352215,
+      "performer": "North Battleford lube city",
+      "cost": 145.16,
+      "notes": "Oil Change 5W30 SYN"
+    },
+    {
+      "date": "2025-01-31",
+      "unit": "FPT28",
+      "item": "Battery",
+      "odometer_km": null,
+      "performer": "CFI shop",
+      "cost": 250.49,
+      "notes": ""
+    },
+    {
+      "date": "2025-02-07",
+      "unit": "FPT87",
+      "item": "Oil change",
+      "odometer_km": 357512,
+      "performer": "Lube City Edmonton",
+      "cost": 323.36,
+      "notes": "Transfer Case Oil Change; Rear Differential Oil Change"
+    },
+    {
+      "date": "2025-02-09",
+      "unit": "FPT16",
+      "item": "Oil change",
+      "odometer_km": 285230,
+      "performer": "Mr Lube",
+      "cost": 281.38,
+      "notes": "5W40 SYN oil change"
+    },
+    {
+      "date": "2025-02-25",
+      "unit": "FPT16",
+      "item": "Fuel Filter",
+      "odometer_km": 285916,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 1954.06,
+      "notes": "Front Diff Service; Rear Pinion Seal; Rear Wheel Seal; Rear Pads & Rotors"
+    },
+    {
+      "date": "2025-03-24",
+      "unit": "FPT48",
+      "item": "Oil change",
+      "odometer_km": 321881,
+      "performer": "Mr Lube",
+      "cost": 205.36,
+      "notes": "Oil and Filter 5w40 SYN"
+    },
+    {
+      "date": "2025-04-04",
+      "unit": "FPT93",
+      "item": "Oil change",
+      "odometer_km": 422278,
+      "performer": "Mr Lube",
+      "cost": 350.0,
+      "notes": "Oil & Filer 15w40 SYN; Air Filter; Rear Diff oil Top up"
+    },
+    {
+      "date": "2025-04-16",
+      "unit": "FPT93",
+      "item": "Rear Diff Pinion Seal",
+      "odometer_km": 423035,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 745.02,
+      "notes": "Fuel Filters; Transfer Case Oil"
+    },
+    {
+      "date": "2025-04-22",
+      "unit": "FPT87",
+      "item": "Spark Plugs & New Wires",
+      "odometer_km": 359684,
+      "performer": "KLW",
+      "cost": 309.93,
+      "notes": "#8 Coil Replaced; Air Filter"
+    },
+    {
+      "date": "2025-04-25",
+      "unit": "FPT87",
+      "item": "Rear Wheel Seal",
+      "odometer_km": 359823,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 436.2,
+      "notes": ""
+    },
+    {
+      "date": "2025-05-05",
+      "unit": "FPT31",
+      "item": "Tire Pressure Sensors",
+      "odometer_km": 201307,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 1690.0,
+      "notes": "Wheel Alignment; Steering Shaft; 2X Trans Cooler Lines"
+    },
+    {
+      "date": "2025-05-14",
+      "unit": "FPT16",
+      "item": "Oil change",
+      "odometer_km": 291963,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 2434.87,
+      "notes": "Torque Converter Oil Line; Transmisson Line; Fan Clutch; Front Wheel Bearing; Cleaned Air Filter"
+    },
+    {
+      "date": "2025-06-26",
+      "unit": "FPT16",
+      "item": "Front Wheel Bearings X2",
+      "odometer_km": 293783,
+      "performer": "Fountian Tire Llyodminster",
+      "cost": 1212.42,
+      "notes": ""
+    },
+    {
+      "date": "2025-07-16",
+      "unit": "FDT91",
+      "item": "CVIP",
+      "odometer_km": 312178,
+      "performer": "Steve's Diesel Repair Ltd.",
+      "cost": null,
+      "notes": "Cert #CV8336439, technician Jordan Bello. CVIP-only PDF (no invoice in folder). Replaced wiper blades + adjusted left rear outer tire to 100PSI at inspection."
+    },
+    {
+      "date": "2025-07-15",
+      "unit": "FPT48",
+      "item": "Oil change",
+      "odometer_km": 325988,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 979.31,
+      "notes": "Oil and Filter 5w40 SYN; Fuel Filter; Trans Filter Spin On; Rear Diff Serivce; Transfer Case Service"
+    },
+    {
+      "date": "2025-09-09",
+      "unit": "FPT93",
+      "item": "Oil change",
+      "odometer_km": 432583,
+      "performer": "Trail Tire 15620-130 Ave",
+      "cost": 308.6,
+      "notes": "Oil Change 10w30 syn; Tire Rotation"
+    },
+    {
+      "date": "2025-09-15",
+      "unit": "FPT31",
+      "item": "Oil change",
+      "odometer_km": 206376,
+      "performer": "Mr Lube #14",
+      "cost": 113.38,
+      "notes": "5W20 SYN Oil Change"
+    },
+    {
+      "date": "2025-10-16",
+      "unit": "FPT16",
+      "item": "Battery",
+      "odometer_km": 303987,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 1291.62,
+      "notes": "2x Batteries; 15w40 Syn Oil Change; Tire Rotation"
+    },
+    {
+      "date": "2025-11-06",
+      "unit": "FPT16",
+      "item": "Blower Motor",
+      "odometer_km": 304123,
+      "performer": "Tire Craft Stony Plain",
+      "cost": 997.14,
+      "notes": "Ignition Switch; Steering Dampener Shock; Wheel Alignment"
+    },
+    {
+      "date": "2025-11-21",
+      "unit": "FDT95",
+      "item": "Oil change",
+      "odometer_km": 302563,
+      "performer": "CFI shop",
+      "cost": 175.0,
+      "notes": "Oil & Filer 5w40 SYN"
+    },
+    {
+      "date": "2025-12-12",
+      "unit": "FPT87",
+      "item": "Oil change",
+      "odometer_km": 377335,
+      "performer": "Lube City Edmonton",
+      "cost": 284.5,
+      "notes": "Oil and Filter 5w30syn; Air Filter; Transfer Case Oil Change"
+    },
+    {
+      "date": "2026-01-09",
+      "unit": "FPT48",
+      "item": "Idler Pulley X2",
+      "odometer_km": 335612,
+      "performer": "Wabasca - KLW",
+      "cost": 497.24,
+      "notes": "Belt Tensioner Pully; Serpentine Belt"
+    },
+    {
+      "date": "2026-01-26",
+      "unit": "FPT48",
+      "item": "Oil change",
+      "odometer_km": 336633,
+      "performer": "Sherwood Park Chevy",
+      "cost": 210.81,
+      "notes": ""
+    },
+    {
+      "date": "2026-02-20",
+      "unit": "FPT48",
+      "item": "4 Rear Tires - Cooper Stronghold",
+      "odometer_km": 337442,
+      "performer": "Trail Tire",
+      "cost": 1581.25,
+      "notes": ""
+    },
+    {
+      "date": "2026-02-23",
+      "unit": "FPT93",
+      "item": "Battery",
+      "odometer_km": 441076,
+      "performer": "CFI shop",
+      "cost": 1500.0,
+      "notes": "Batteries x2; Rear tires x2"
+    },
+    {
+      "date": "2026-03-13",
+      "unit": "FPT16",
+      "item": "Oil change",
+      "odometer_km": 316382,
+      "performer": "3 Son's",
+      "cost": 7853.59,
+      "notes": "Fuel Filter; Sway Bar Links x2; Front Axle U Joints x2; Water Pump; Tensioner, Idler Pulley; Serpitine Belt; Radiator Flush; Rear Shocks; Turbo back Exhaust; Upper & Lower Ball Joints x4"
+    },
+    {
+      "date": "2026-03-20",
+      "unit": "FPT87",
+      "item": "Oil change",
+      "odometer_km": 383041,
+      "performer": "Great Canadian Oil Change",
+      "cost": 146.66,
+      "notes": "Oil and Filter 5w30syn"
+    }
+  ],
   "defects_resolved": []
 }

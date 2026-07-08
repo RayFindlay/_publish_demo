@@ -1,61 +1,112 @@
 {
-  "_comment": "Demo fleet metadata. Synthetic data \u2014 not a real carrier.",
-  "carrier": {
-    "name": "Cascade Freight Inc.",
-    "short": "CFI",
-    "nsc": "AB-NSC-999-0000",
-    "nsc_valid_to": "2028-11-30",
-    "home_terminal_address": "1200 Industrial Way NE, Calgary, AB T3J 5H9"
-  },
+  "_comment": "Fleet metadata not captured by SiteDocs or Titan: per-vehicle status + compliance dates, per-driver license + medical dates. Hand-edited (no upstream feed). Edit dates here when you renew CVIP, register a vehicle, update a driver's medical, etc.",
+  "_status_values": [
+    "in_service",
+    "out_of_service",
+    "maintenance"
+  ],
+  "_date_format": "YYYY-MM-DD",
   "vehicles": {
     "FDT71": {
-      "vehicle_id": "FDT71",
-      "cvip_due": "2027-05-15",
-      "registration_expiry": "2027-10-30",
-      "insurance_expiry": "2027-06-30"
+      "status": "in_service",
+      "status_note": "",
+      "cvip_expires": "",
+      "registration_expires": "",
+      "insurance_expires": "",
+      "notes": ""
     },
     "FDT95": {
-      "vehicle_id": "FDT95",
-      "cvip_due": "2027-04-15",
-      "registration_expiry": "2027-10-30",
-      "insurance_expiry": "2027-06-30"
+      "status": "in_service",
+      "status_note": "",
+      "cvip_expires": "",
+      "registration_expires": "",
+      "insurance_expires": "",
+      "notes": ""
     },
     "FDT86": {
-      "vehicle_id": "FDT86",
-      "cvip_due": "2027-02-15",
-      "registration_expiry": "2027-09-30",
-      "insurance_expiry": "2027-06-30"
+      "status": "in_service",
+      "status_note": "",
+      "cvip_expires": "",
+      "registration_expires": "",
+      "insurance_expires": "",
+      "notes": ""
     },
     "FPT48": {
-      "vehicle_id": "FPT48",
-      "cvip_due": "2027-08-15",
-      "registration_expiry": "2027-07-30",
-      "insurance_expiry": "2027-06-30"
+      "status": "in_service",
+      "status_note": "",
+      "cvip_expires": "",
+      "registration_expires": "",
+      "insurance_expires": "",
+      "notes": ""
     },
     "FPT61": {
-      "vehicle_id": "FPT61",
-      "cvip_due": "2027-04-15",
-      "registration_expiry": "2027-05-30",
-      "insurance_expiry": "2027-06-30"
+      "status": "in_service",
+      "status_note": "",
+      "cvip_expires": "",
+      "registration_expires": "",
+      "insurance_expires": "",
+      "notes": ""
     },
     "FPT77": {
-      "vehicle_id": "FPT77",
-      "cvip_due": "2027-11-15",
-      "registration_expiry": "2027-09-30",
-      "insurance_expiry": "2027-06-30"
+      "status": "in_service",
+      "status_note": "",
+      "cvip_expires": "",
+      "registration_expires": "",
+      "insurance_expires": "",
+      "notes": ""
     },
     "FPT16": {
-      "vehicle_id": "FPT16",
-      "cvip_due": "2027-01-15",
-      "registration_expiry": "2027-05-30",
-      "insurance_expiry": "2027-06-30"
+      "status": "in_service",
+      "status_note": "",
+      "cvip_expires": "",
+      "registration_expires": "",
+      "insurance_expires": "",
+      "notes": ""
     },
     "FPT93": {
-      "vehicle_id": "FPT93",
-      "cvip_due": "2027-12-15",
-      "registration_expiry": "2027-06-30",
-      "insurance_expiry": "2027-06-30"
+      "status": "in_service",
+      "status_note": "",
+      "cvip_expires": "",
+      "registration_expires": "",
+      "insurance_expires": "",
+      "notes": ""
     }
   },
-  "drivers": {}
+  "drivers": {
+    "caseynguyen": {
+      "license_class": "",
+      "license_expires": "",
+      "medical_expires": "",
+      "abstract_obtained": "",
+      "notes": ""
+    },
+    "samdelacroix": {
+      "license_class": "",
+      "license_expires": "",
+      "medical_expires": "",
+      "abstract_obtained": "",
+      "notes": ""
+    },
+    "taylorwells": {
+      "license_class": "",
+      "license_expires": "",
+      "medical_expires": "",
+      "abstract_obtained": "",
+      "notes": ""
+    },
+    "cameronfox": {
+      "license_class": "",
+      "license_expires": "",
+      "medical_expires": "",
+      "abstract_obtained": "",
+      "notes": ""
+    },
+    "jordanreeve": {
+      "license_class": "",
+      "license_expires": "",
+      "medical_expires": "",
+      "abstract_obtained": "",
+      "notes": ""
+    }
+  }
 }
