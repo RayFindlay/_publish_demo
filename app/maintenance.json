@@ -1,0 +1,17 @@
+{
+  "_comment": "Demo maintenance data. Synthetic for portfolio dashboard.",
+  "schedule": [
+    {
+      "item": "CVIP",
+      "unit": "*",
+      "interval_days": 365
+    },
+    {
+      "item": "Oil change",
+      "unit": "*",
+      "interval_km": 8000
+    }
+  ],
+  "log": [],
+  "defects_resolved": []
+}
