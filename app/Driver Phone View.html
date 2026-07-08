@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cascade Freight, Driver Roadside View</title>
+<link rel="stylesheet" href="norfab.css">
+
+<!-- iOS / Android "Add to Home Screen" support.
+     When a driver adds this URL to their phone's home screen, tapping the
+     icon opens the page in standalone (no browser chrome) mode and the URL
+     is bookmarked permanently. Every tap reloads the page, which re-fetches
+     latest.json with `cache: "no-store"`, so the data is always current. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Roadside">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1A2A">
+<link rel="apple-touch-icon" href="assets/logo-nfm-white.png">
+<link rel="icon" href="assets/logo-nfm-clean.png">
+
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #FAFBFC;
+    color: #1A1F24;
+    font-family: "Aptos","Inter",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  /* Constrain to phone-width on desktop (so it doesn't stretch absurdly),
+     full width on actual phones. The Cascade Freight navy BrandBar inside PhoneView
+     becomes the top header, no faux iOS chrome wrapping it. */
+  .stage {
+    min-height: 100vh;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background: #FAFBFC;
+  }
+  .phone-stage { width: 100%; }
+  .pv-screen { -webkit-overflow-scrolling: touch; }
+  .error-card {
+    max-width: 480px; margin: 80px 24px; padding: 32px 28px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 10px; color: #E7EAEE; text-align: center;
+  }
+  /* Override norfab.css's dark h1 colour, on this dark page we need a light title. */
+  .error-card h1 {
+    margin: 0 0 10px; font-family: "Aptos Display","Aptos",sans-serif;
+    font-size: 22px; color: #FAFBFC; line-height: 1.2;
+  }
+  .error-card p { margin: 0; color: #B7BEC6; font-size: 13px; line-height: 1.55; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+<div id="demo-banner" style="position:fixed;top:0;left:0;right:0;background:#f5c14b;color:#1b1b1b;text-align:center;padding:6px 12px;font-family:'Aptos','Segoe UI',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.02em;z-index:9999;border-bottom:1px solid #c9963b;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+  LIVE DEMO &middot; Synthetic data. <a href="https://github.com/RayFindlay/_publish_demo" style="color:#1b1b1b;text-decoration:underline" target="_blank" rel="noopener">Source</a>
+</div>
+<div style="height:28px"></div>
+<div class="stage">
+  <div class="phone-stage" id="root"></div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="fleet-api-config.js"></script>
+<script src="data.js"></script>
+
+<script type="text/babel" src="phone/ios-frame.jsx"></script>
+<script type="text/babel" src="phone/phone-view.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+// Driver is identified ENTIRELY by the URL token. There is no in-page
+// switcher, each driver has their own personal SharePoint link and must
+// not see anyone else's data.
+//
+// Accepted token forms (most permissive first):
+//   ?token=drv_8757ea7edf19e421
+//   ?driver=drv_8757ea7edf19e421
+//   #drv_8757ea7edf19e421
+// If none is provided, render an "open via your roadside link" message.
+
+function resolveDriverIdFromUrl() {
+  const D = window.NORFAB_DATA || {};
+  const params = new URLSearchParams(window.location.search);
+  let raw = params.get("token") || params.get("driver") || "";
+  if (!raw && window.location.hash) raw = window.location.hash.replace(/^#/, "");
+  raw = (raw || "").trim();
+  if (!raw) return null;
+  // Try matching by registry token first (drv_<hex>), then by driver.id, then case-insensitive name.
+  const drivers = D.DRIVERS || [];
+  let match = drivers.find(d => d.token && d.token === raw);
+  if (match) return match.id;
+  match = drivers.find(d => d.id === raw);
+  if (match) return match.id;
+  match = drivers.find(d => d.name && d.name.toLowerCase() === raw.toLowerCase());
+  if (match) return match.id;
+  return null;
+}
+
+function MissingDriver() {
+  return (
+    <div className="error-card">
+      <h1>Open your roadside link</h1>
+      <p>This page is opened via a personal link emailed to you by Cascade Freight. The link includes your driver token. If you reached this page directly, please use the link from your email.</p>
+    </div>
+  );
+}
+
+function bootstrap() {
+  const driverId = resolveDriverIdFromUrl();
+  const root = ReactDOM.createRoot(document.getElementById("root"));
+  if (!driverId) {
+    root.render(<MissingDriver />);
+    return;
+  }
+  // Render PhoneView directly, no IOSDevice wrapper. The faux iOS chrome
+  // (status bar, dynamic island, back/menu buttons) is dead weight on a
+  // real phone, duplicates the OS's real status bar and takes ~80px of
+  // vertical space showing fake placeholder content. The Cascade Freight navy
+  // BrandBar inside PhoneView serves as the actual top banner.
+  root.render(<PhoneView driverId={driverId} />);
+}
+
+if (window.NORFAB_DATA && window.NORFAB_DATA.ready) {
+  bootstrap();
+} else {
+  window.addEventListener("nf-data-ready", bootstrap, { once: true });
+  // Safety net: never block forever even if the data fetch errors out.
+  setTimeout(() => { if (!window.__pvMounted) { window.__pvMounted = true; bootstrap(); } }, 6000);
+  window.addEventListener("nf-data-ready", () => { window.__pvMounted = true; }, { once: true });
+}
+</script>
+</body>
+</html>

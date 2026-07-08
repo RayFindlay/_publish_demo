@@ -1,0 +1,254 @@
+/* ============================================================
+   Cascade Freight Manufacturing, Foundations
+   Type: Aptos (specified by client). Fallback to Inter / system.
+   Color: rooted in the existing site's deep navy + steel grey,
+   with three optional accent directions (see :root[data-style]).
+   ============================================================ */
+
+/* ---- Aptos webfont (via OnlineWebFonts CDN; license note in README) ---- */
+@font-face {
+  font-family: "Aptos";
+  src: url("https://db.onlinewebfonts.com/t/7dd5f4bf5d38875ca1822a830b6e6fe4.woff2") format("woff2"),
+       url("https://db.onlinewebfonts.com/t/7dd5f4bf5d38875ca1822a830b6e6fe4.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos";
+  src: url("https://db.onlinewebfonts.com/t/cfd2b2e62e2d0da33c516f3249ac6e81.woff2") format("woff2"),
+       url("https://db.onlinewebfonts.com/t/cfd2b2e62e2d0da33c516f3249ac6e81.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aptos Display";
+  src: url("https://db.onlinewebfonts.com/t/4834874c51804d8e98b394c3881c6d17.woff2") format("woff2"),
+       url("https://db.onlinewebfonts.com/t/4834874c51804d8e98b394c3881c6d17.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ---------- TYPE ---------- */
+  --font-sans: "Aptos", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Aptos Display", "Aptos", "Inter", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Type scale (body root = 16px) */
+  --fs-eyebrow: 0.75rem;   /* 12, small caps eyebrows */
+  --fs-caption: 0.8125rem; /* 13 */
+  --fs-body-sm: 0.875rem;  /* 14 */
+  --fs-body:    1rem;      /* 16 */
+  --fs-lead:    1.1875rem; /* 19 */
+  --fs-h4:      1.375rem;  /* 22 */
+  --fs-h3:      1.75rem;   /* 28 */
+  --fs-h2:      2.25rem;   /* 36 */
+  --fs-h1:      3rem;      /* 48 */
+  --fs-display: 4.5rem;    /* 72, hero */
+
+  --lh-tight: 1.05;
+  --lh-snug:  1.2;
+  --lh-base:  1.5;
+  --lh-loose: 1.65;
+
+  --tracking-eyebrow: 0.16em;
+  --tracking-display: -0.015em;
+  --tracking-body:    0;
+
+  /* ---------- CORE COLOR, derived from norfab.ca navy logo ---------- */
+  --navy-950: #0B1A2A; /* deepest – heavy backgrounds, footer */
+  --navy-900: #112436; /* primary brand navy (logo) */
+  --navy-800: #1B324A;
+  --navy-700: #294866;
+  --navy-600: #3C5E7E;
+
+  --steel-900: #1A1F24; /* nearly black, structural */
+  --steel-700: #3A434D;
+  --steel-500: #6B7682; /* neutral grey */
+  --steel-300: #B7BEC6;
+  --steel-200: #D4D9DE;
+  --steel-100: #E7EAEE;
+  --steel-50:  #F3F5F7;
+  --paper:     #FAFBFC; /* off-white page */
+  --white:     #FFFFFF;
+
+  /* Heat / accent, molten metal orange (Option A default).
+     Other style options redefine these via :root[data-style] below. */
+  --accent-700: #B23A0E;
+  --accent-600: #D9501F;
+  --accent-500: #F26B2D;
+  --accent-300: #FFB089;
+  --accent-100: #FCE7DA;
+
+  /* Semantic (status) */
+  --ok:    #1F6F45;
+  --warn:  #C98A1B;
+  --error: #B5341E;
+  --info:  var(--navy-700);
+
+  /* ---------- SEMANTIC ROLES ---------- */
+  --bg:        var(--paper);
+  --bg-alt:    var(--steel-50);
+  --bg-inverse: var(--navy-900);
+  --surface:   var(--white);
+  --surface-alt: var(--steel-50);
+
+  --fg:        var(--navy-900);
+  --fg-muted:  var(--steel-500);
+  --fg-subtle: var(--steel-700);
+  --fg-on-dark: var(--white);
+  --fg-on-dark-muted: #B7BEC6;
+  --fg-link:   var(--navy-800);
+
+  --border:        var(--steel-200);
+  --border-strong: var(--steel-300);
+  --rule:          var(--steel-100);
+
+  --brand:       var(--navy-900);
+  --brand-ink:   var(--white);
+  --accent:      var(--accent-600);
+  --accent-ink:  var(--white);
+
+  /* ---------- SHAPE ---------- */
+  --radius-0: 0;
+  --radius-1: 2px;   /* engineered / industrial, minimal rounding */
+  --radius-2: 4px;
+  --radius-3: 8px;
+  --radius-4: 12px;
+  --radius-pill: 999px;
+
+  /* ---------- SHADOW (low, restrained, industrial trust) ---------- */
+  --shadow-1: 0 1px 0 rgba(17,36,54,0.04), 0 1px 2px rgba(17,36,54,0.06);
+  --shadow-2: 0 1px 2px rgba(17,36,54,0.06), 0 4px 12px rgba(17,36,54,0.08);
+  --shadow-3: 0 6px 18px rgba(17,36,54,0.10), 0 20px 40px rgba(17,36,54,0.10);
+  --shadow-inset: inset 0 0 0 1px rgba(17,36,54,0.06);
+
+  /* ---------- SPACING (4px base) ---------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+  --s-10: 128px;
+
+  /* ---------- MOTION ---------- */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
+}
+
+/* ============================================================
+   STYLE OPTIONS, three palette directions on the same bones.
+   Set <html data-style="heritage|engineered|spark"> to switch.
+   ============================================================ */
+
+/* OPTION A, HERITAGE STEEL (default)
+   Deep navy + warm spark orange. Conservative, trustworthy,
+   matches the existing site most closely. */
+:root[data-style="heritage"] {
+  --accent-700: #B23A0E;
+  --accent-600: #D9501F;
+  --accent-500: #F26B2D;
+  --accent-300: #FFB089;
+  --accent-100: #FCE7DA;
+  --accent: var(--accent-600);
+}
+
+/* OPTION B, ENGINEERED
+   Navy + safety yellow + cool steel. Reads as precision /
+   blueprint / industrial signage. */
+:root[data-style="engineered"] {
+  --accent-700: #A37500;
+  --accent-600: #D49B0A;
+  --accent-500: #F2B928;
+  --accent-300: #FFE08A;
+  --accent-100: #FFF4D1;
+  --accent: var(--accent-500);
+  --accent-ink: var(--navy-900);
+}
+
+/* OPTION C, SPARK
+   High-contrast charcoal + arc-weld cyan. More modern /
+   tech-forward; positions Cascade Freight next to advanced manufacturing. */
+:root[data-style="spark"] {
+  --bg-inverse: #0E1318;
+  --brand: #0E1318;
+  --navy-900: #0E1318;
+  --accent-700: #0F6B7A;
+  --accent-600: #18A0B5;
+  --accent-500: #2EC4DA;
+  --accent-300: #9DEAF5;
+  --accent-100: #DEF7FB;
+  --accent: var(--accent-500);
+  --accent-ink: #0E1318;
+}
+
+/* ============================================================
+   SEMANTIC TYPOGRAPHY, element-level rules
+   ============================================================ */
+html { font-family: var(--font-sans); color: var(--fg); background: var(--bg); }
+body { font-size: var(--fs-body); line-height: var(--lh-base); letter-spacing: var(--tracking-body); -webkit-font-smoothing: antialiased; }
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+h1, .h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-display);
+  font-weight: 700;
+  color: var(--fg);
+  text-wrap: balance;
+}
+h2, .h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.01em;
+  font-weight: 700;
+  color: var(--fg);
+  text-wrap: balance;
+}
+h3, .h3 { font-family: var(--font-sans); font-size: var(--fs-h3); line-height: var(--lh-snug); font-weight: 600; color: var(--fg); }
+h4, .h4 { font-family: var(--font-sans); font-size: var(--fs-h4); line-height: var(--lh-snug); font-weight: 600; color: var(--fg); }
+
+.display {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+p, .p { font-size: var(--fs-body); line-height: var(--lh-loose); color: var(--fg); text-wrap: pretty; }
+.lead { font-size: var(--fs-lead); line-height: var(--lh-base); color: var(--fg-subtle); }
+.caption, small { font-size: var(--fs-caption); color: var(--fg-muted); }
+code, .mono { font-family: var(--font-mono); font-size: 0.95em; }
+
+a { color: var(--fg-link); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--accent-600); }
+
+/* Heartbeat indicator pulse — used by the stale-pipeline warning in the
+   top bar. Pulses the indicator dot so it draws the eye without being
+   loud. Stops animating naturally when the indicator unmounts (i.e.,
+   sync recovered). */
+@keyframes nf-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.8); }
+}
