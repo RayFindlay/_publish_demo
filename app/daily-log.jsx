@@ -72,8 +72,8 @@ const DailyLog = ({ unitId, dayISO, onClose }) => {
           <Field label="Total distance driven" value={`${totalKm.toFixed(1)} km`} />
           <Field label="Driver signature" value="-" muted />
           <Field label="Motor carrier" value="Cascade Freight Inc." />
-          <Field label="Principal place of business" value="16425 130 Ave NW, Edmonton" />
-          <Field label="Home terminal address" value="16425 130 Ave NW, Edmonton" />
+          <Field label="Principal place of business" value="1200 Industrial Way NE, Calgary" />
+          <Field label="Home terminal address" value="1200 Industrial Way NE, Calgary" />
           <Field label="Co-driver" value="-" muted />
           <Field label="Trailer plate" value="-" muted />
           <Field label="Trailer unit" value="-" muted />

@@ -25,7 +25,7 @@ const TripDetail = ({ unitId, dayISO, onClose, onPrint }) => {
       <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
           <div>
-            <Btn kind="ghost" onClick={onClose} size="sm" style={{ marginLeft: -8, marginBottom: 8 }}>← Back to dashboard</Btn>
+            <Btn kind="ghost" onClick={onClose} size="sm" style={{ marginLeft: -8, marginBottom: 8 }}>← Back</Btn>
             <Eyebrow>Trip detail · Unit {unit.id}</Eyebrow>
             <div style={{ font: "700 28px/1.15 var(--font-display)", color: "var(--navy-900)", letterSpacing: "-0.01em", marginTop: 6 }}>
               {dateLabel}
@@ -36,7 +36,6 @@ const TripDetail = ({ unitId, dayISO, onClose, onPrint }) => {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <Btn kind="secondary" size="sm" onClick={onPrint} icon={<Icon name="printer" size={14} />}>Print</Btn>
-            <Btn kind="primary" size="sm" icon={<Icon name="file-down" size={14} />}>Export evidence</Btn>
           </div>
         </div>
 
@@ -69,7 +68,7 @@ const TripDetail = ({ unitId, dayISO, onClose, onPrint }) => {
 
 // ---------- Map ----------
 function TripMap({ trips, ppb }) {
-  // Project lat/lng onto a 1000x600 SVG viewport (Edmonton-area Mercator-ish)
+  // Project lat/lng onto a 1000x600 SVG viewport (Calgary-area Mercator-ish)
   // Bounding: include PPB and all sites
   const pts = [{ lat: ppb.lat, lng: ppb.lng }, ...trips.map(t => ({ lat: t.site_lat, lng: t.site_lng }))];
   const lats = pts.map(p => p.lat), lngs = pts.map(p => p.lng);
@@ -124,7 +123,7 @@ function TripMap({ trips, ppb }) {
         <rect x={px - 5} y={py - 5} width={10} height={10} fill="var(--accent-600)" />
       </g>
       <text x={px + 14} y={py + 4} style={{ font: "600 11px var(--font-sans)", fill: "var(--navy-900)" }}>Principal Place of Business</text>
-      <text x={px + 14} y={py + 18} style={{ font: "10px var(--font-sans)", fill: "var(--fg-muted)" }}>16425 130 Ave NW, Edmonton</text>
+      <text x={px + 14} y={py + 18} style={{ font: "10px var(--font-sans)", fill: "var(--fg-muted)" }}>1200 Industrial Way NE, Calgary</text>
       {/* Scale */}
       <g transform={`translate(24, ${H - 30})`}>
         <rect width="120" height="4" fill="var(--navy-900)" />

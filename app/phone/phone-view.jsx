@@ -593,7 +593,7 @@ function CarrierBlock() {
         <Row k="Carrier" v={SFC.carrier} />
         <Row k="NSC #" v={SFC.nsc} mono />
         <Row k="Safety Fitness Cert" v={`Valid · expires ${SFC.expires}`} />
-        <Row k="Home terminal" v="16425 130 Ave NW, Edmonton AB" last />
+        <Row k="Home terminal" v="1200 Industrial Way NE, Calgary AB" last />
       </Card>
     </Section>
   );

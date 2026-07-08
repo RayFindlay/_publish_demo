@@ -3,7 +3,7 @@
 // API the design components use (DRIVERS, UNITS, TRIPS, DVIR, dayCompliance, ...).
 
 (function () {
-  const PPB = { lat: 53.585, lng: -113.561, address: "16425 130 Ave NW, Edmonton, AB T5V 1K5" };
+  const PPB = { lat: 51.0553, lng: -114.0553, address: "1200 Industrial Way NE, Calgary, AB T3J 5H9" };
   const SFC = { carrier: "Cascade Freight Inc.", nsc: "AB-NSC-013-2241", expires: "2028-11-30" };
   // Canonical worker-facing host. GitHub Pages serves PDFs inline with no
   // Microsoft login required (unlike SharePoint, which forces auth even on
@@ -227,7 +227,7 @@
   //
   // For drivers who take the truck home overnight, "day-start" is wherever
   // the truck began that day's first trip (usually the driver's home),
-  // NOT the carrier's PPB address (16425 130 Ave NW). The earlier version
+  // NOT the carrier's registered PPB address. The earlier version
   // measured against PPB and falsely flagged take-truck-home drivers.
   //
   // Pre-trip / post-trip DVIR is NSC Standard 13, a separate compliance
@@ -265,21 +265,11 @@
   // additional locations — the dashboard will start picking them up
   // automatically on the next load.
   //
-  // Coords are pulled from the actual Titan geofence centroids:
-  //   - 'Head Office' is CFI-yard (the main shop with corporate offices),
-  //     where Titan labels trip endpoints as 'Head Office'.
-  //   - 'NFB' is the separate Cascade Freight building across the street from
-  //     CFI-yard, with its own Titan geofence (Ray confirmed 53.59120,
-  //     -113.60778 from Titan's NFB perimeter setup).
-  //
-  // The PPB constant's coords (53.585, -113.561) are NOT a Cascade Freight
-  // building. Empirically they're near Nelson Lumber. PPB is preserved
-  // elsewhere because it's the carrier-registered address used in the
-  // 160 km HOS haversine check, but it doesn't belong in this shop-
-  // detection list.
+  // DEMO: synthetic yard geofence centroids matching the anonymized
+  // dataset's fake home terminal (Calgary industrial area).
   const HOME_TERMINALS = [
-    { name: "Head Office", lat: 53.590474, lng: -113.608617 },
-    { name: "NFB",         lat: 53.59120,  lng: -113.60778  },
+    { name: "Head Office", lat: 51.0553,  lng: -114.0553 },
+    { name: "CFB",         lat: 51.0561,  lng: -114.0546 },
   ];
   const SHOP_RADIUS_KM = 0.5;
 
@@ -288,8 +278,8 @@
   // {lat, lng} object or [lat, lng] array. Returns null if not at any
   // known shop or if the coords are unusable.
   //
-  // Returns the CLOSEST shop, not the first one within radius. NFM
-  // and NFB are about 95 m apart, so both can be inside the 500 m
+  // Returns the CLOSEST shop, not the first one within radius. The two
+  // yard buildings are about 95 m apart, so both can be inside the 500 m
   // radius simultaneously — picking the closer one keeps trips labeled
   // with the building they were actually at.
   function shopNameForCoords(coords) {

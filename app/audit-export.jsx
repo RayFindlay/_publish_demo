@@ -145,8 +145,10 @@ const AuditExport = ({ unitId, year, month, weightFilter, onClose }) => {
         <div style={{ flex: 1, font: "600 13px var(--font-sans)", color: "var(--navy-900)" }}>
           NSC compliance report · {monthLabel}
         </div>
-        <Btn kind="secondary" size="sm" icon={<Icon name="download" size={14} />}>Download PDF</Btn>
-        <Btn kind="primary" size="sm" icon={<Icon name="printer" size={14} />} onClick={() => window.print()}>Print</Btn>
+        {/* One button: the browser print dialog is also the PDF exporter
+            (destination "Save as PDF"). A separate Download PDF button was
+            an unwired stub — removed rather than duplicating Print. */}
+        <Btn kind="primary" size="sm" icon={<Icon name="printer" size={14} />} onClick={() => window.print()}>Print / Save PDF</Btn>
       </div>
 
       {/* Page */}
@@ -168,7 +170,7 @@ const AuditExport = ({ unitId, year, month, weightFilter, onClose }) => {
             <div>
               <div style={{ font: "700 16px/1.1 var(--font-display)", letterSpacing: "-0.005em" }}>Cascade Freight Inc.</div>
               <div style={{ font: "11px/1.4 var(--font-sans)", color: "var(--fg-subtle)", marginTop: 2 }}>
-                {D.PPB.name}<br/>(780) 447-5454 · norfab.ca
+                {D.PPB.name}<br/>(555) 010-0100 · cascadefreight.example
               </div>
             </div>
           </div>

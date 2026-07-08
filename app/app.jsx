@@ -69,7 +69,16 @@ function App() {
   useEffectApp(() => {
     const desired = window.NORFAB_LOCAL.routeToHash(route);
     if (window.location.hash !== desired) {
-      window.history.replaceState(null, "", desired || "#");
+      // pushState (not replaceState) so every screen becomes a history
+      // entry — this is what makes the browser back button and the app's
+      // "Back" buttons actually return to the previous screen. The one
+      // exception: landing on the default route with no hash yet; replace
+      // so back doesn't dead-end on a hashless duplicate of the same page.
+      if (!window.location.hash && route.name === "fleet") {
+        window.history.replaceState(null, "", desired || "#");
+      } else {
+        window.history.pushState(null, "", desired || "#");
+      }
     }
   }, [route]);
 
@@ -81,19 +90,32 @@ function App() {
         setPaletteOpen(true);
       }
     };
+    // The TopBar Search button dispatches this custom event; without the
+    // listener the button silently does nothing (only Ctrl/Cmd+K worked).
+    const onOpenPalette = () => setPaletteOpen(true);
     window.addEventListener("popstate", onPop);
     window.addEventListener("hashchange", onPop);
     window.addEventListener("keydown", onKey);
+    window.addEventListener("nf-open-palette", onOpenPalette);
     return () => {
       window.removeEventListener("popstate", onPop);
       window.removeEventListener("hashchange", onPop);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("nf-open-palette", onOpenPalette);
     };
   }, []);
 
   const navigate = (name, params = {}) => {
     if (name === "daily-log") { setModal({ kind: "daily-log", ...params }); return; }
     setRoute({ name, ...params });
+  };
+
+  // Back = browser back, so the screen the user actually came from is
+  // restored (routes live in the URL hash). Falls back to the fleet
+  // overview when this tab has no history, e.g. a pasted deep link.
+  const goBack = () => {
+    if (window.history.length > 1) window.history.back();
+    else setRoute({ name: "fleet" });
   };
 
   const copyLink = async (drv) => {
@@ -140,23 +162,23 @@ function App() {
         )}
         {route.name === "trip-detail" && (
           <TripDetail unitId={route.unitId} dayISO={route.dayISO}
-            onClose={() => setRoute({ name: "dashboard" })}
+            onClose={goBack}
             onPrint={() => navigate("daily-log", { unitId: route.unitId, dayISO: route.dayISO })} />
         )}
         {route.name === "unit" && (
           <UnitDetail unitId={route.unitId}
-            onClose={() => setRoute({ name: "dashboard" })}
+            onClose={goBack}
             onOpenDay={(iso) => setRoute({ name: "trip-detail", unitId: route.unitId, dayISO: iso })} />
         )}
         {route.name === "daily-log-list" && (
           <LogsList state={state} dayFilter={route.dayISO}
-            onClose={() => setRoute({ name: "dashboard" })}
+            onClose={goBack}
             onOpenLog={(uid, iso) => navigate("daily-log", { unitId: uid, dayISO: iso })} />
         )}
         {route.name === "audit" && (
           <AuditExport unitId={state.unitId} year={state.year} month={state.month}
             weightFilter={state.weightFilter}
-            onClose={() => setRoute({ name: "dashboard" })} />
+            onClose={goBack} />
         )}
         {route.name === "vehicles" && window.VehicleList && (
           <window.VehicleList

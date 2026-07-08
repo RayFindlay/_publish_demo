@@ -51,7 +51,7 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
   return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20, maxWidth: 1280, margin: "0 auto", height: "100%", overflowY: "auto" }}>
       <div>
-        <Btn kind="ghost" onClick={onClose} size="sm" style={{ marginLeft: -8, marginBottom: 8 }}>← Back to dashboard</Btn>
+        <Btn kind="ghost" onClick={onClose} size="sm" style={{ marginLeft: -8, marginBottom: 8 }}>← Back</Btn>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
           <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
             {unit.photo && (
@@ -86,7 +86,7 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
             {[
               ["Class", unit.klass === "heavy" ? "≥ 11,794 kg (NSC)" : "< 11,794 kg (Light)"],
-              ["Operating area", unit.klass === "heavy" ? "160 km radius (AB exempt)" : "Local Edmonton & area"],
+              ["Operating area", unit.klass === "heavy" ? "160 km radius (AB exempt)" : "Local Calgary & area"],
               ["Driver of record", unit.driver],
               ["Year / Make / Model", `${unit.year} ${unit.make} ${unit.model}`],
               ["Plate", `${unit.id}-AB`],

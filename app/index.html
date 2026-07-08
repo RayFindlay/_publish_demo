@@ -77,10 +77,14 @@
   }
 
   @media print {
+    /* The app lays out screens in height-constrained scroll containers.
+       Printing clips to the scrollport unless the whole ancestor chain is
+       allowed to grow — without this, only the visible screenful prints. */
+    html, body, #root { height: auto !important; overflow: visible !important; }
     body * { visibility: hidden !important; }
     .audit-page, .audit-page *,
     .nf-binder, .nf-binder * { visibility: visible !important; }
-    .audit-page { position: absolute; left: 0; top: 0; box-shadow: none !important; margin: 0 !important; }
+    .audit-page { position: absolute; left: 0; top: 0; width: 100% !important; min-height: 0 !important; box-shadow: none !important; margin: 0 !important; }
     .no-print, .nf-no-print { display: none !important; }
     @page { size: letter; margin: 0.5in; }
     /* Feature #8: print-binder layout for driver-month export */

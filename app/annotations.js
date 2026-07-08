@@ -70,7 +70,7 @@
     SFC:   "Safety Fitness Certificate, Alberta document certifying the carrier's NSC profile.",
     DVIR:  "Driver Vehicle Inspection Report, required pre-trip and post-trip vehicle inspection record.",
     GVW:   "Gross Vehicle Weight, manufacturer-rated maximum loaded weight (kg). 11,794 kg is the threshold for full daily-log requirements.",
-    PPB:   "Principal Place of Business, the registered home terminal (Cascade Freight: 16425 130 Ave NW, Edmonton).",
+    PPB:   "Principal Place of Business, the registered home terminal (Cascade Freight: 1200 Industrial Way NE, Calgary).",
     HOS:   "Hours of Service, Canadian commercial driver duty time regulations.",
     PPE:   "Personal Protective Equipment.",
     "160 km": "The Alberta exemption radius: short-haul drivers operating within 160 km of the home terminal AND returning the same day need not keep a full daily log.",

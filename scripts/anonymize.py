@@ -403,11 +403,14 @@ def _rewrite_unit_codes_in_string(s, all_real_units):
 
 def _scrub_brand_text(s):
     """Replace brand markers in free text: 'Norfab' (any casing, incl.
-    'Norfab Mfg (1993) Inc.' variants) and whole-word 'NFM'."""
+    'Norfab Mfg (1993) Inc.' variants), whole-word 'NFM', and the real
+    operating city (vendor names like 'Lube City Edmonton' would otherwise
+    place the carrier geographically — the demo's story is Calgary)."""
     if not isinstance(s, str) or not s:
         return s
     s = re.sub(r"(?i)norfab(\s+mfg)?(\s*\(1993\))?(\s*inc\.?)?", FAKE_COMPANY_SHORT, s)
     s = re.sub(r"\bNFM\b", FAKE_COMPANY_SHORT, s)
+    s = s.replace("Edmonton", "Calgary")
     return s
 
 

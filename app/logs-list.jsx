@@ -24,7 +24,7 @@ const LogsList = ({ state, onOpenLog, onClose, dayFilter }) => {
   return (
     <div style={{ padding: 24, maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, height: "100%", overflowY: "auto" }}>
       <div>
-        <Btn kind="ghost" size="sm" style={{ marginLeft: -8, marginBottom: 6 }} onClick={onClose}>← Back to dashboard</Btn>
+        <Btn kind="ghost" size="sm" style={{ marginLeft: -8, marginBottom: 6 }} onClick={onClose}>← Back</Btn>
         <Eyebrow>Driver daily logs</Eyebrow>
         <div style={{ font: "700 28px/1.1 var(--font-display)", color: "var(--navy-900)", letterSpacing: "-0.01em", marginTop: 6 }}>
           {dayFilter
