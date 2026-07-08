@@ -1,0 +1,5 @@
+# Demo: always revalidate so visitors (and Ray) never see stale scripts
+# after a deploy. no-cache means "check with server first", not "don't
+# cache" — ETag revalidation keeps it fast.
+/*
+  Cache-Control: no-cache
