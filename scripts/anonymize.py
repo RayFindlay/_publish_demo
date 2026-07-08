@@ -226,7 +226,12 @@ def anonymize_sitedocs(records):
 
 def fetch_json(url):
     print(f"Fetching {url}")
-    with urllib.request.urlopen(url, timeout=30) as resp:
+    # Cloudflare rejects the default Python-urllib User-Agent with 403.
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; DemoRefreshWorkflow/1.0)"},
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
