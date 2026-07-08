@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 R2_ENDPOINT = "https://dc8101f3cdb435a804c5d4e4e4a2f79b.r2.cloudflarestorage.com"
-R2_BUCKET = "FLEET_DATA"
+R2_BUCKET = "norfab-fleet-data"
 R2_KEY_LATEST = "latest.json"
 
 # Fake identity for the demo
