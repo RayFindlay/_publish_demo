@@ -329,10 +329,22 @@ def anonymize_fleet_meta_json(prod):
     return out
 
 
-def anonymize_maintenance_json(prod):
-    """Rewrite unit references in schedule + log + defects_resolved. Keep everything else."""
+def _rewrite_unit_codes_in_string(s, all_real_units):
+    """Substitute every real unit code that appears as a whole-word substring
+    with its fake counterpart. Used to sanitize free-text fields."""
+    if not isinstance(s, str) or not s:
+        return s
+    for real_unit in all_real_units:
+        # Whole-word match, not part of a larger identifier
+        s = re.sub(rf"\b{re.escape(real_unit)}\b", fake_unit_for(real_unit), s)
+    return s
+
+
+def anonymize_maintenance_json(prod, all_real_units):
+    """Rewrite unit references anywhere they appear: schedule, log, defects_resolved,
+    and the _*_fields metadata blocks that document the format with real unit codes."""
     out = dict(prod)
-    # schedule: entries have "unit" field (can be * / heavy / light / specific code)
+    # Schedule entries
     new_schedule = []
     for entry in (prod.get("schedule") or []):
         e = dict(entry)
@@ -341,7 +353,7 @@ def anonymize_maintenance_json(prod):
             e["unit"] = fake_unit_for(u)
         new_schedule.append(e)
     out["schedule"] = new_schedule
-    # log: entries reference a specific unit + performer + notes
+    # Log entries
     new_log = []
     for entry in (prod.get("log") or []):
         e = dict(entry)
@@ -351,9 +363,10 @@ def anonymize_maintenance_json(prod):
             e["performer"] = FAKE_COMPANY + " shop"
         if e.get("notes"):
             e["notes"] = re.sub(r"(?i)norfab[a-z\s()0-9]*inc\.?", FAKE_COMPANY, e["notes"])
+            e["notes"] = _rewrite_unit_codes_in_string(e["notes"], all_real_units)
         new_log.append(e)
     out["log"] = new_log
-    # defects_resolved: entries reference a unit
+    # Defects resolved
     new_defects = []
     for entry in (prod.get("defects_resolved") or []):
         e = dict(entry)
@@ -361,6 +374,17 @@ def anonymize_maintenance_json(prod):
             e["unit"] = fake_unit_for(e["unit"])
         new_defects.append(e)
     out["defects_resolved"] = new_defects
+    # _*_fields metadata blocks: help-text that lists real unit codes as examples
+    # ("unit": "FDT12 | FDT14 | ... | * (all) | heavy | light"). Rewrite unit
+    # codes in every string value inside these blocks.
+    for meta_key in ("_schedule_fields", "_log_fields", "_defects_resolved_fields"):
+        block = prod.get(meta_key)
+        if not isinstance(block, dict):
+            continue
+        new_block = {}
+        for k, v in block.items():
+            new_block[k] = _rewrite_unit_codes_in_string(v, all_real_units)
+        out[meta_key] = new_block
     return out
 
 
@@ -474,9 +498,15 @@ def main():
     prod_fleet_meta = fetch_json(PROD_FLEET_META_URL)
     prod_maintenance = fetch_json(PROD_MAINTENANCE_URL)
 
+    # All real unit codes from BOTH the data and fleet-meta (some may only
+    # appear in one or the other).
+    all_real_units_full = set(all_real_units) | set(
+        (prod_fleet_meta.get("vehicles") or {}).keys()
+    )
+
     drivers_out = anonymize_drivers_json(prod_drivers)
     fleet_meta_out = anonymize_fleet_meta_json(prod_fleet_meta)
-    maintenance_out = anonymize_maintenance_json(prod_maintenance)
+    maintenance_out = anonymize_maintenance_json(prod_maintenance, all_real_units_full)
 
     # Build a focused guard set for the three shape-preserved JSONs.
     # Only real identifiers: driver names, unit codes, brand markers.
