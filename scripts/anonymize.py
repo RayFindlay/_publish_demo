@@ -122,14 +122,35 @@ def collect_real_strings_to_guard(data):
         add(r.get("driver"))
         add(r.get("startLocationName"))
         add(r.get("endLocationName"))
+        add(r.get("assetName"))
     for r in data.get("sitedocs_records", []):
         add(r.get("driver"))
         add(r.get("driver_name_raw"))
+        add(r.get("inspector"))
+        add(r.get("carrier"))
+        add(r.get("defect_notes"))
     # Explicit brand markers
     for marker in ["Norfab", "norfab", "NORFAB", "Findlay", "findlay", "NFM", "Raymond"]:
         strings.add(marker)
     strings.discard("")
     return strings
+
+
+def find_leaks_in_object(obj, real_strings, path=""):
+    """Walk the anonymized JSON recursively, yield (field_path, leaked_string, value)
+    for every leak. Precise diagnostics for iterating on missed fields."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            new_path = f"{path}.{k}" if path else k
+            yield from find_leaks_in_object(v, real_strings, new_path)
+    elif isinstance(obj, list):
+        # Only scan first 200 items per list to keep output manageable
+        for i, v in enumerate(obj[:200]):
+            yield from find_leaks_in_object(v, real_strings, f"{path}[{i}]")
+    elif isinstance(obj, str):
+        for s in real_strings:
+            if s in obj:
+                yield (path, s, obj)
 
 
 def anonymize_titan(records):
@@ -164,17 +185,33 @@ def anonymize_sitedocs(records):
     out = []
     for r in records:
         r = dict(r)
+        # Driver-name fields (driver + inspector + raw variants)
         if r.get("driver"):
             r["driver"] = fake_name_for(r["driver"])
-        if r.get("unit"):
-            r["unit"] = fake_unit_for(r["unit"])
+        if r.get("inspector"):
+            r["inspector"] = fake_name_for(r["inspector"])
         if r.get("driver_name_raw"):
             r["driver_name_raw"] = fake_name_for(r["driver_name_raw"])
-        if r.get("unit_raw"):
-            r["unit_raw"] = fake_unit_for(r["unit_raw"])
-        # Point PDF references at a placeholder
+        # Unit + trailer fields
+        for unit_field in ("unit", "unit_no", "unit_label", "unit_raw",
+                           "trailer_unit", "trailer_unit_label"):
+            if r.get(unit_field):
+                r[unit_field] = fake_unit_for(r[unit_field])
+        # Carrier
+        if r.get("carrier"):
+            r["carrier"] = FAKE_COMPANY
+        # Trailer plate: synthesize a fake plate
+        if r.get("trailer_plate"):
+            h = hashlib.sha256(f"plate:{r['trailer_plate']}".encode()).hexdigest()[:6].upper()
+            r["trailer_plate"] = h
+        # Defect notes: replace free-text with sample marker
+        if r.get("defect_notes"):
+            r["defect_notes"] = "[Demo] Sample defect note. Original redacted."
+        # File paths
         if r.get("source_file"):
             r["source_file"] = "SAMPLE_DVI_placeholder.pdf"
+        if r.get("text_path"):
+            r["text_path"] = "sample.txt"
         out.append(r)
     return out
 
@@ -282,12 +319,16 @@ def main():
     data["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     # === LEAK SCAN: no real string may appear anywhere in the anonymized output
-    output_text = json.dumps(data)
-    leaks = [s for s in real_strings if s in output_text]
+    leaks = list(find_leaks_in_object(data, real_strings))
     if leaks:
-        print(f"\nERROR: {len(leaks)} real value(s) leaked into output:", file=sys.stderr)
-        for s in leaks[:20]:
-            print(f"  - {s!r}", file=sys.stderr)
+        # Group by (field_path, leaked_string) so the report is compact
+        grouped = {}
+        for path, leaked, value in leaks:
+            grouped.setdefault((path.split("[")[0], leaked), value)
+        print(f"\nERROR: {len(leaks)} leak occurrence(s) in {len(grouped)} distinct field/string combos:", file=sys.stderr)
+        for (field_path, leaked), value in list(grouped.items())[:20]:
+            snippet = value[:100] + "..." if len(value) > 100 else value
+            print(f"  - field={field_path!r} leaked={leaked!r} value={snippet!r}", file=sys.stderr)
         print("Refusing to publish. Anonymization is buggy.", file=sys.stderr)
         sys.exit(1)
     print("[OK] Leak scan: no real strings found in output")
