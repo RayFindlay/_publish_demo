@@ -1,0 +1,40 @@
+name: Refresh Demo Data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install -r scripts/requirements.txt
+
+      - name: Anonymize data (fails hard on leak)
+        env:
+          R2_READONLY_ACCESS_KEY_ID: ${{ secrets.R2_READONLY_ACCESS_KEY_ID }}
+          R2_READONLY_SECRET_ACCESS_KEY: ${{ secrets.R2_READONLY_SECRET_ACCESS_KEY }}
+        run: python scripts/anonymize.py
+
+      - name: Commit anonymized data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Refresh demo data ($(date -u +%Y-%m-%d))"
+            git push
+          fi
