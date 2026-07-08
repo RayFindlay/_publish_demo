@@ -15,15 +15,18 @@
 
   // Static fleet catalog, 8 units. GVW/tare confirmed by Cascade Freight.
   // klass: "heavy" if GVW >= 11,794 kg (Alberta full-log threshold), else "light".
+  // Unit IDs match the anonymized codes emitted by scripts/anonymize.py
+  // (deterministic hash of real unit id → fake code).
+  // year/make/model are common enough to not identify — thousands of these.
   const UNITS = [
-    { id: "FDT12", year: 2007, make: "GMC",   model: "C5500 Flatbed",   gvw_kg: 23000, tare_kg: 4550, klass: "heavy", photo: "assets/units/FDT12.jpg" },
-    { id: "FDT14", year: 2012, make: "Ford",  model: "F-550 Crew",      gvw_kg: 15950, tare_kg: 5000, klass: "heavy", photo: "assets/units/FDT14.jpg" },
-    { id: "FDT15", year: 2024, make: "Ford",  model: "F-550 Crew",      gvw_kg: 15900, tare_kg: 5000, klass: "heavy", photo: "assets/units/FDT15.jpg" },
-    { id: "FPT10", year: 2009, make: "GMC",   model: "Sierra 3500HD",   gvw_kg: 6350,  tare_kg: 3200, klass: "light", photo: "assets/units/FPT10.jpg" },
-    { id: "FPT20", year: 2010, make: "GMC",   model: "Sierra 1500",     gvw_kg: 4400,  tare_kg: 2700, klass: "light", photo: "assets/units/FPT20.jpg" },
-    { id: "FPT21", year: 2011, make: "GMC",   model: "Sierra",          gvw_kg: 5000,  tare_kg: 2750, klass: "light" },
-    { id: "FPT22", year: 2005, make: "Dodge", model: "Ram 2500",        gvw_kg: 4309,  tare_kg: 2650, klass: "light", photo: "assets/units/FPT22.jpg" },
-    { id: "FPT23", year: 2012, make: "Ford",  model: "F350",            gvw_kg: 7400,  tare_kg: 3100, klass: "light" },
+    { id: "FDT71", year: 2007, make: "GMC",   model: "C5500 Flatbed",   gvw_kg: 23000, tare_kg: 4550, klass: "heavy", photo: "assets/units/FDT71.jpg" },
+    { id: "FDT95", year: 2012, make: "Ford",  model: "F-550 Crew",      gvw_kg: 15950, tare_kg: 5000, klass: "heavy", photo: "assets/units/FDT95.jpg" },
+    { id: "FDT86", year: 2024, make: "Ford",  model: "F-550 Crew",      gvw_kg: 15900, tare_kg: 5000, klass: "heavy", photo: "assets/units/FDT86.jpg" },
+    { id: "FPT48", year: 2009, make: "GMC",   model: "Sierra 3500HD",   gvw_kg: 6350,  tare_kg: 3200, klass: "light", photo: "assets/units/FPT48.jpg" },
+    { id: "FPT61", year: 2010, make: "GMC",   model: "Sierra 1500",     gvw_kg: 4400,  tare_kg: 2700, klass: "light", photo: "assets/units/FPT61.jpg" },
+    { id: "FPT77", year: 2011, make: "GMC",   model: "Sierra",          gvw_kg: 5000,  tare_kg: 2750, klass: "light", photo: "assets/units/FPT77.jpg" },
+    { id: "FPT16", year: 2005, make: "Dodge", model: "Ram 2500",        gvw_kg: 4309,  tare_kg: 2650, klass: "light", photo: "assets/units/FPT16.jpg" },
+    { id: "FPT93", year: 2012, make: "Ford",  model: "F350",            gvw_kg: 7400,  tare_kg: 3100, klass: "light", photo: "assets/units/FPT93.jpg" },
   ];
 
   // Per-driver static contact extras. Empty for now, Ray will fill in.

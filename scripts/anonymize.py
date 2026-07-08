@@ -15,7 +15,9 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -23,6 +25,12 @@ from pathlib import Path
 R2_ENDPOINT = "https://dc8101f3cdb435a804c5d4e4e4a2f79b.r2.cloudflarestorage.com"
 R2_BUCKET = "norfab-fleet-data"
 R2_KEY_LATEST = "latest.json"
+
+# Public production URLs for the non-sensitive JSONs. We fetch these so the
+# demo has the same SHAPE as production — anonymized, not synthetic.
+PROD_DRIVERS_URL = "https://norfab-fleet.pages.dev/app/drivers.json"
+PROD_FLEET_META_URL = "https://norfab-fleet.pages.dev/app/fleet-meta.json"
+PROD_MAINTENANCE_URL = "https://norfab-fleet.pages.dev/app/maintenance.json"
 
 # Fake identity for the demo
 FAKE_COMPANY = "Cascade Freight Inc."
@@ -216,58 +224,139 @@ def anonymize_sitedocs(records):
     return out
 
 
-def generate_drivers_json(all_real_names):
-    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    out = {"version": 1, "updated_at_utc": now, "drivers": {}}
-    for real_name in sorted(all_real_names):
+def fetch_json(url):
+    print(f"Fetching {url}")
+    with urllib.request.urlopen(url, timeout=30) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+_TOKEN_MAP = {}
+
+
+def fake_token_for_reversible(real_token):
+    """Deterministic fake token; also record the mapping so URL rewriting
+    can substitute later without re-hashing."""
+    if not real_token:
+        return real_token
+    fake = fake_token_for(real_token)
+    _TOKEN_MAP[real_token] = fake
+    return fake
+
+
+def rewrite_urls_and_paths(v):
+    """Replace SharePoint URLs and paths with demo-relative equivalents.
+    Preserves any real_token substrings by mapping them to fake tokens."""
+    if not isinstance(v, str):
+        return v
+    # Replace any known real driver token with its fake counterpart
+    for real_tok, fake_tok in _TOKEN_MAP.items():
+        v = v.replace(real_tok, fake_tok)
+    # Kill SharePoint URLs entirely (replace with demo URL where possible)
+    if "norfabmfg.sharepoint.com" in v:
+        # Preserve any path suffix after the base — helpful for the dashboard
+        # to still see /drivers/{fake_token}/... shape even if the origin is now demo.
+        m = re.search(r"(/roadside/drivers/drv_[a-f0-9]+/[^\"' ]*)", v)
+        if m:
+            return f"https://fleet-compliance-demo.pages.dev{m.group(1)}"
+        m = re.search(r"(/app/Driver%20Phone%20View\.html\?token=drv_[a-f0-9]+)", v)
+        if m:
+            return f"https://fleet-compliance-demo.pages.dev{m.group(1)}"
+        # Fallback: strip URL, return empty
+        return ""
+    return v
+
+
+def deep_transform_strings(obj, fn):
+    """Recursively apply fn to every string in a nested structure."""
+    if isinstance(obj, dict):
+        return {k: deep_transform_strings(v, fn) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [deep_transform_strings(x, fn) for x in obj]
+    if isinstance(obj, str):
+        return fn(obj)
+    return obj
+
+
+def anonymize_drivers_json(prod):
+    """Fetch shape from production, replace identifying values, keep every field."""
+    out = {
+        "version": prod.get("version", 1),
+        "updated_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "drivers": {},
+    }
+    for real_key, real_driver in prod.get("drivers", {}).items():
+        real_name = real_driver.get("name", real_key)
+        real_token = real_driver.get("token")
         fake_name = fake_name_for(real_name)
-        fake_token = fake_token_for(f"drv_{hashlib.sha256(real_name.encode()).hexdigest()[:16]}")
-        key = fake_name.lower()
-        out["drivers"][key] = {
-            "name": fake_name,
-            "token": fake_token,
-            "created_at_utc": "2026-03-01T12:00:00Z",
-            "last_published_at_utc": now,
-        }
+        fake_token = fake_token_for_reversible(real_token) if real_token else None
+        fake_key = fake_name.lower()
+
+        new_driver = dict(real_driver)
+        new_driver["name"] = fake_name
+        if fake_token:
+            new_driver["token"] = fake_token
+        # Rewrite every URL/path field via the reversible map + SharePoint stripper
+        new_driver = deep_transform_strings(new_driver, rewrite_urls_and_paths)
+        out["drivers"][fake_key] = new_driver
     return out
 
 
-def generate_fleet_meta_json(all_real_units):
-    vehicles = {}
-    for real_unit in sorted(all_real_units):
+def anonymize_fleet_meta_json(prod):
+    """Preserve every field; only the identifying keys/values (unit codes,
+    driver keys) are anonymized."""
+    out = dict(prod)
+    # Vehicles: keyed by unit code
+    new_vehicles = {}
+    for real_unit, meta in (prod.get("vehicles") or {}).items():
         fake_unit = fake_unit_for(real_unit)
-        cvip_month = stable_int(f"cvip:{fake_unit}", 12) + 1
-        reg_month = stable_int(f"reg:{fake_unit}", 12) + 1
-        vehicles[fake_unit] = {
-            "vehicle_id": fake_unit,
-            "cvip_due": f"2027-{cvip_month:02d}-15",
-            "registration_expiry": f"2027-{reg_month:02d}-30",
-            "insurance_expiry": "2027-06-30",
-        }
-    return {
-        "_comment": "Demo fleet metadata. Synthetic data — not a real carrier.",
-        "carrier": {
-            "name": FAKE_COMPANY,
-            "short": FAKE_COMPANY_SHORT,
-            "nsc": FAKE_NSC,
-            "nsc_valid_to": "2028-11-30",
-            "home_terminal_address": FAKE_HOME_ADDRESS,
-        },
-        "vehicles": vehicles,
-        "drivers": {},
-    }
+        new_vehicles[fake_unit] = dict(meta)
+    out["vehicles"] = new_vehicles
+    # Drivers: keyed by name-concat (e.g. "dustinmarriott")
+    new_drivers = {}
+    for real_key, meta in (prod.get("drivers") or {}).items():
+        # Recover the real name from the key by finding a matching real name
+        # (fleet-meta uses a lowercased-no-spaces key). We anonymize the key
+        # via the same driver-name mapping.
+        fake_name = fake_name_for(real_key)
+        fake_key = re.sub(r"[^a-z0-9]", "", fake_name.lower())
+        new_drivers[fake_key] = dict(meta)
+    out["drivers"] = new_drivers
+    return out
 
 
-def generate_maintenance_json():
-    return {
-        "_comment": "Demo maintenance data. Synthetic for portfolio dashboard.",
-        "schedule": [
-            {"item": "CVIP", "unit": "*", "interval_days": 365},
-            {"item": "Oil change", "unit": "*", "interval_km": 8000},
-        ],
-        "log": [],
-        "defects_resolved": [],
-    }
+def anonymize_maintenance_json(prod):
+    """Rewrite unit references in schedule + log + defects_resolved. Keep everything else."""
+    out = dict(prod)
+    # schedule: entries have "unit" field (can be * / heavy / light / specific code)
+    new_schedule = []
+    for entry in (prod.get("schedule") or []):
+        e = dict(entry)
+        u = e.get("unit")
+        if u and u not in ("*", "heavy", "light"):
+            e["unit"] = fake_unit_for(u)
+        new_schedule.append(e)
+    out["schedule"] = new_schedule
+    # log: entries reference a specific unit + performer + notes
+    new_log = []
+    for entry in (prod.get("log") or []):
+        e = dict(entry)
+        if e.get("unit"):
+            e["unit"] = fake_unit_for(e["unit"])
+        if e.get("performer") and "norfab" in e["performer"].lower():
+            e["performer"] = FAKE_COMPANY + " shop"
+        if e.get("notes"):
+            e["notes"] = re.sub(r"(?i)norfab[a-z\s()0-9]*inc\.?", FAKE_COMPANY, e["notes"])
+        new_log.append(e)
+    out["log"] = new_log
+    # defects_resolved: entries reference a unit
+    new_defects = []
+    for entry in (prod.get("defects_resolved") or []):
+        e = dict(entry)
+        if e.get("unit"):
+            e["unit"] = fake_unit_for(e["unit"])
+        new_defects.append(e)
+    out["defects_resolved"] = new_defects
+    return out
 
 
 def main():
@@ -374,17 +463,64 @@ def main():
         f"({len(data['titan_records'])} titan, {len(data['sitedocs_records'])} sitedocs)"
     )
 
+    # Fetch production shapes for the other three JSONs and anonymize
+    print("\n=== Fetching production JSON shapes ===")
+    prod_drivers = fetch_json(PROD_DRIVERS_URL)
+    prod_fleet_meta = fetch_json(PROD_FLEET_META_URL)
+    prod_maintenance = fetch_json(PROD_MAINTENANCE_URL)
+
+    drivers_out = anonymize_drivers_json(prod_drivers)
+    fleet_meta_out = anonymize_fleet_meta_json(prod_fleet_meta)
+    maintenance_out = anonymize_maintenance_json(prod_maintenance)
+
+    # Guard all three against leaks too
+    for label, prod_data, out_data in (
+        ("drivers.json", prod_drivers, drivers_out),
+        ("fleet-meta.json", prod_fleet_meta, fleet_meta_out),
+        ("maintenance.json", prod_maintenance, maintenance_out),
+    ):
+        gs = collect_real_strings_to_guard({
+            "titan_records": [],
+            "sitedocs_records": [{"driver": n, "unit": u, "carrier": prod_fleet_meta.get("_comment", "")}
+                                  for n in [(d.get("name") if isinstance(d, dict) else None)
+                                            for d in (prod_data.get("drivers") or {}).values()]
+                                  for u in [None]],
+        })
+        # Also add every real driver name + unit code from production
+        for d in (prod_drivers.get("drivers") or {}).values():
+            if isinstance(d, dict) and d.get("name") and len(d["name"]) >= 6:
+                gs.add(d["name"])
+        for real_unit in (prod_fleet_meta.get("vehicles") or {}).keys():
+            if len(real_unit) >= 4:
+                gs.add(real_unit)
+        for marker in ["Norfab", "norfab", "NORFAB", "Findlay", "NFM", "norfabmfg", "sharepoint.com"]:
+            gs.add(marker)
+        leaks_here = list(find_leaks_in_object(out_data, gs))
+        if leaks_here:
+            grouped = {}
+            for path, leaked, value in leaks_here:
+                grouped.setdefault((path.split("[")[0], leaked), value)
+            print(f"\nERROR: {label} has {len(leaks_here)} leak(s) in {len(grouped)} field/string combos:", file=sys.stderr)
+            for (fp, ls), val in list(grouped.items())[:20]:
+                snippet = val[:100] + "..." if len(val) > 100 else val
+                print(f"  - {label}: field={fp!r} leaked={ls!r} value={snippet!r}", file=sys.stderr)
+            sys.exit(1)
+        print(f"[OK] {label}: no real strings leaked")
+
     with open(out_dir / "drivers.json", "w", encoding="utf-8") as f:
-        json.dump(generate_drivers_json(all_real_names), f, indent=2)
-    print(f"Wrote app/drivers.json ({len(all_real_names)} drivers)")
+        json.dump(drivers_out, f, indent=2)
+    print(f"Wrote app/drivers.json ({len(drivers_out['drivers'])} drivers)")
 
     with open(out_dir / "fleet-meta.json", "w", encoding="utf-8") as f:
-        json.dump(generate_fleet_meta_json(all_real_units), f, indent=2)
-    print(f"Wrote app/fleet-meta.json ({len(all_real_units)} vehicles)")
+        json.dump(fleet_meta_out, f, indent=2)
+    print(f"Wrote app/fleet-meta.json ({len(fleet_meta_out.get('vehicles', {}))} vehicles, "
+          f"{len(fleet_meta_out.get('drivers', {}))} drivers)")
 
     with open(out_dir / "maintenance.json", "w", encoding="utf-8") as f:
-        json.dump(generate_maintenance_json(), f, indent=2)
-    print("Wrote app/maintenance.json")
+        json.dump(maintenance_out, f, indent=2)
+    print(f"Wrote app/maintenance.json (schedule={len(maintenance_out.get('schedule', []))}, "
+          f"log={len(maintenance_out.get('log', []))}, "
+          f"defects_resolved={len(maintenance_out.get('defects_resolved', []))})")
 
     print("\n[OK] Anonymization complete.")
 
