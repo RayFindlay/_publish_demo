@@ -1,0 +1,5 @@
+# Demo: per-driver deep links (support PDFs, landing pages, defect PDFs)
+# don't have real published trees here. Serve the synthetic sample DVI.
+/drivers/* /sample-dvi.html 302
+/defects/* /sample-dvi.html 302
+/roadside/* /sample-dvi.html 302

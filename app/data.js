@@ -8,10 +8,12 @@
   // Canonical worker-facing host. GitHub Pages serves PDFs inline with no
   // Microsoft login required (unlike SharePoint, which forces auth even on
   // "Anyone with the link" shares when the tenant restricts them).
-  const PUBLISH_BASE = "https://norfab-fleet.pages.dev";
+  // DEMO: same-origin. Per-driver deep links (/drivers/*, /defects/*) are
+  // caught by the _redirects file and served a synthetic sample DVI page.
+  const PUBLISH_BASE = "";
   // SharePoint mirror is kept as a backup channel (per-driver folder structure
   // is preserved at the OneDrive sync target). Not used for worker links.
-  const SHAREPOINT_MIRROR_BASE = "https://cascadefreight.sharepoint.com/sites/FleetAutomation/Shared%20Documents/40_SFC_Evidence_and_Roadside";
+  const SHAREPOINT_MIRROR_BASE = ""; // DEMO: no SharePoint mirror
 
   // Static fleet catalog, 8 units. GVW/tare confirmed by Cascade Freight.
   // klass: "heavy" if GVW >= 11,794 kg (Alberta full-log threshold), else "light".

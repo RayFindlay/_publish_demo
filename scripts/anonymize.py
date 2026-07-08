@@ -143,24 +143,48 @@ def haversine_km(lat1, lon1, lat2, lon2):
     return 2 * R * math.asin(math.sqrt(a))
 
 
+def name_variants(full_name):
+    """All the forms a real name can leak in: 'Stefan Gurba' also appears as
+    'GurbaStefan' (source filenames), 'StefanGurba', 'Gurba, Stefan', and
+    bare first/last names. Guard every variant."""
+    variants = {full_name}
+    parts = [p for p in re.split(r"\s+", full_name.strip()) if p]
+    if len(parts) >= 2:
+        first, last = parts[0], parts[-1]
+        variants |= {
+            f"{first}{last}", f"{last}{first}",
+            f"{last} {first}", f"{last}, {first}",
+        }
+        if len(first) >= 4:
+            variants.add(first)
+        if len(last) >= 4:
+            variants.add(last)
+    return variants
+
+
 def collect_real_strings_to_guard(data):
-    """Real strings that must NEVER appear in output. Length >= 6 to avoid
-    false positives (e.g., a real name 'Sam' colliding with fake 'Sam Delacroix')."""
+    """Real strings that must NEVER appear in output. Length >= 6 for
+    free-text fields to avoid false positives; name fields also guard
+    concatenated/reversed/bare variants via name_variants()."""
     strings = set()
 
     def add(v):
         if v and isinstance(v, str) and len(v.strip()) >= 6:
             strings.add(v.strip())
 
+    def add_name(v):
+        if v and isinstance(v, str) and v.strip():
+            strings.update(name_variants(v.strip()))
+
     for r in data.get("titan_records", []):
-        add(r.get("driver"))
+        add_name(r.get("driver"))
         add(r.get("startLocationName"))
         add(r.get("endLocationName"))
         add(r.get("assetName"))
     for r in data.get("sitedocs_records", []):
-        add(r.get("driver"))
-        add(r.get("driver_name_raw"))
-        add(r.get("inspector"))
+        add_name(r.get("driver"))
+        add_name(r.get("driver_name_raw"))
+        add_name(r.get("inspector"))
         add(r.get("carrier"))
         add(r.get("defect_notes"))
     # Explicit brand markers
@@ -241,9 +265,20 @@ def anonymize_sitedocs(records):
         # Defect notes: replace free-text with sample marker
         if r.get("defect_notes"):
             r["defect_notes"] = "[Demo] Sample defect note. Original redacted."
-        # File paths
-        if r.get("source_file"):
-            r["source_file"] = "SAMPLE_DVI_placeholder.pdf"
+        # Source filenames: real ones embed 'LastFirst' driver names
+        # (SITEDOCS__DVI__date__id__date-GurbaStefan-hash.pdf). Synthesize a
+        # matching-looking name from already-anonymized values.
+        if r.get("source_pdf") or r.get("source_file"):
+            date = r.get("date_local") or "0000-00-00"
+            fake_concat = (r.get("driver") or "Driver").replace(" ", "")
+            h = hashlib.sha256(
+                f"pdf:{r.get('source_pdf', '')}:{r.get('source_file', '')}".encode()
+            ).hexdigest()[:8]
+            fake_pdf = f"SITEDOCS__DVI__{date}__DEMO__{date}-{fake_concat}-{h}.pdf"
+            if r.get("source_pdf"):
+                r["source_pdf"] = fake_pdf
+            if r.get("source_file"):
+                r["source_file"] = fake_pdf
         if r.get("text_path"):
             r["text_path"] = "sample.txt"
         out.append(r)
@@ -580,8 +615,8 @@ def main():
     # contain identifying info, they describe the file's purpose).
     focused_guard = set()
     for d in (prod_drivers.get("drivers") or {}).values():
-        if isinstance(d, dict) and d.get("name") and len(d["name"]) >= 6:
-            focused_guard.add(d["name"])
+        if isinstance(d, dict) and d.get("name"):
+            focused_guard.update(name_variants(d["name"]))
     for real_unit in (prod_fleet_meta.get("vehicles") or {}).keys():
         if len(real_unit) >= 4:
             focused_guard.add(real_unit)
