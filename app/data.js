@@ -8,9 +8,10 @@
   // Canonical worker-facing host. GitHub Pages serves PDFs inline with no
   // Microsoft login required (unlike SharePoint, which forces auth even on
   // "Anyone with the link" shares when the tenant restricts them).
-  // DEMO: same-origin. Per-driver deep links (/drivers/*, /defects/*) are
+  // DEMO: this site's own origin, absolute so "Copy roadside link" produces
+  // a pasteable URL. Per-driver deep links (/drivers/*, /defects/*) are
   // caught by the _redirects file and served a synthetic sample DVI page.
-  const PUBLISH_BASE = "";
+  const PUBLISH_BASE = "https://fleet-compliance-demo.pages.dev";
   // SharePoint mirror is kept as a backup channel (per-driver folder structure
   // is preserved at the OneDrive sync target). Not used for worker links.
   const SHAREPOINT_MIRROR_BASE = ""; // DEMO: no SharePoint mirror
