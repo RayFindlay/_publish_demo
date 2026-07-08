@@ -1,5 +1,5 @@
 // Persistent local state, manager annotations + verified stamps + cycle math.
-// Pure JS, exposed on window.CASCADE FREIGHT_LOCAL. Plain localStorage now;
+// Pure JS, exposed on window.NORFAB_LOCAL. Plain localStorage now;
 // VSC Claude can swap for SharePoint/SQL/etc later without touching UI code.
 (function () {
   const NS = "norfab.v1.";
@@ -117,7 +117,7 @@
     return { name: "fleet" };
   }
 
-  window.CASCADE FREIGHT_LOCAL = {
+  window.NORFAB_LOCAL = {
     getAnnotation, setAnnotation, getVerified, setVerified,
     cycleUsage, proximityWarning, GLOSSARY,
     routeToHash, hashToRoute,

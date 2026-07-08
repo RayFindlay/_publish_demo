@@ -48,7 +48,7 @@ function App() {
     };
   });
   // Feature #2, deep-linkable URLs. Init from hash; sync on change.
-  const initial = window.CASCADE FREIGHT_LOCAL.hashToRoute(window.location.hash);
+  const initial = window.NORFAB_LOCAL.hashToRoute(window.location.hash);
   const [route, setRoute] = useStateApp(initial);
   const [modal, setModal] = useStateApp(null); // {kind: 'daily-log', unitId, dayISO}
   const [toast, setToast] = useStateApp(null);
@@ -67,14 +67,14 @@ function App() {
   }, []);
 
   useEffectApp(() => {
-    const desired = window.CASCADE FREIGHT_LOCAL.routeToHash(route);
+    const desired = window.NORFAB_LOCAL.routeToHash(route);
     if (window.location.hash !== desired) {
       window.history.replaceState(null, "", desired || "#");
     }
   }, [route]);
 
   useEffectApp(() => {
-    const onPop = () => setRoute(window.CASCADE FREIGHT_LOCAL.hashToRoute(window.location.hash));
+    const onPop = () => setRoute(window.NORFAB_LOCAL.hashToRoute(window.location.hash));
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();

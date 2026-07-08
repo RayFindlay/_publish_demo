@@ -833,9 +833,9 @@
   // ----- Bootstrap (async): fetch latest.json + registry, populate adapter state.
   async function init() {
     const latestUrl   = window.NORFAB_LATEST_JSON_URL   || "./latest.json";
-    const registryUrl = window.CASCADE FREIGHT_REGISTRY_JSON_URL || "./drivers.json";
-    const metaUrl     = window.CASCADE FREIGHT_FLEET_META_URL    || "./fleet-meta.json";
-    const maintUrl    = window.CASCADE FREIGHT_MAINTENANCE_URL   || "./maintenance.json";
+    const registryUrl = window.NORFAB_REGISTRY_JSON_URL || "./drivers.json";
+    const metaUrl     = window.NORFAB_FLEET_META_URL    || "./fleet-meta.json";
+    const maintUrl    = window.NORFAB_MAINTENANCE_URL   || "./maintenance.json";
     // credentials: "include" is required for cross-origin fetches to the
     // Cloudflare Worker API when Access is protecting the /admin route.
     // Without it, the browser refuses to send the CF_AppSession cookie

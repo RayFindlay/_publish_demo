@@ -120,9 +120,9 @@ const DriverDetail = ({ driverId, onClose, onOpenDay, onCopyLink }) => {
 
           <Card>
             <Eyebrow style={{ marginBottom: 8 }}>Cycle limits</Eyebrow>
-            <CycleBar label="On-duty rolling 7-day" used={(window.CASCADE FREIGHT_LOCAL && window.CASCADE FREIGHT_LOCAL.cycleUsage) ? window.CASCADE FREIGHT_LOCAL.cycleUsage(drv.id, D.TODAY, 7) : 0} limit={70} />
+            <CycleBar label="On-duty rolling 7-day" used={(window.NORFAB_LOCAL && window.NORFAB_LOCAL.cycleUsage) ? window.NORFAB_LOCAL.cycleUsage(drv.id, D.TODAY, 7) : 0} limit={70} />
             <div style={{ height: 10 }} />
-            <CycleBar label="On-duty rolling 14-day" used={(window.CASCADE FREIGHT_LOCAL && window.CASCADE FREIGHT_LOCAL.cycleUsage) ? window.CASCADE FREIGHT_LOCAL.cycleUsage(drv.id, D.TODAY, 14) : 0} limit={120} />
+            <CycleBar label="On-duty rolling 14-day" used={(window.NORFAB_LOCAL && window.NORFAB_LOCAL.cycleUsage) ? window.NORFAB_LOCAL.cycleUsage(drv.id, D.TODAY, 14) : 0} limit={120} />
             <div style={{ marginTop: 10, font: "11.5px/1.45 var(--font-sans)", color: "var(--fg-muted)" }}>
               {cycle === "cycle1" ? "Cycle 1: 7-day / 70-hour on-duty limit, 24-hour reset after 36+ hrs off." : "Cycle 2: 14-day / 120-hour on-duty limit, with 24+ hr reset."}
             </div>
