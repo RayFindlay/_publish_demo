@@ -478,29 +478,27 @@ def main():
     fleet_meta_out = anonymize_fleet_meta_json(prod_fleet_meta)
     maintenance_out = anonymize_maintenance_json(prod_maintenance)
 
-    # Guard all three against leaks too
-    for label, prod_data, out_data in (
-        ("drivers.json", prod_drivers, drivers_out),
-        ("fleet-meta.json", prod_fleet_meta, fleet_meta_out),
-        ("maintenance.json", prod_maintenance, maintenance_out),
+    # Build a focused guard set for the three shape-preserved JSONs.
+    # Only real identifiers: driver names, unit codes, brand markers.
+    # Benign fields like _comment stay in the output unchanged (they don't
+    # contain identifying info, they describe the file's purpose).
+    focused_guard = set()
+    for d in (prod_drivers.get("drivers") or {}).values():
+        if isinstance(d, dict) and d.get("name") and len(d["name"]) >= 6:
+            focused_guard.add(d["name"])
+    for real_unit in (prod_fleet_meta.get("vehicles") or {}).keys():
+        if len(real_unit) >= 4:
+            focused_guard.add(real_unit)
+    for marker in ["Norfab", "norfab", "NORFAB", "Findlay", "NFM", "norfabmfg",
+                   "sharepoint.com", "norfabmfg.com"]:
+        focused_guard.add(marker)
+
+    for label, out_data in (
+        ("drivers.json", drivers_out),
+        ("fleet-meta.json", fleet_meta_out),
+        ("maintenance.json", maintenance_out),
     ):
-        gs = collect_real_strings_to_guard({
-            "titan_records": [],
-            "sitedocs_records": [{"driver": n, "unit": u, "carrier": prod_fleet_meta.get("_comment", "")}
-                                  for n in [(d.get("name") if isinstance(d, dict) else None)
-                                            for d in (prod_data.get("drivers") or {}).values()]
-                                  for u in [None]],
-        })
-        # Also add every real driver name + unit code from production
-        for d in (prod_drivers.get("drivers") or {}).values():
-            if isinstance(d, dict) and d.get("name") and len(d["name"]) >= 6:
-                gs.add(d["name"])
-        for real_unit in (prod_fleet_meta.get("vehicles") or {}).keys():
-            if len(real_unit) >= 4:
-                gs.add(real_unit)
-        for marker in ["Norfab", "norfab", "NORFAB", "Findlay", "NFM", "norfabmfg", "sharepoint.com"]:
-            gs.add(marker)
-        leaks_here = list(find_leaks_in_object(out_data, gs))
+        leaks_here = list(find_leaks_in_object(out_data, focused_guard))
         if leaks_here:
             grouped = {}
             for path, leaked, value in leaks_here:
