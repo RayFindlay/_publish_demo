@@ -77,18 +77,40 @@
   }
 
   @media print {
-    /* The app lays out screens in height-constrained scroll containers.
-       Printing clips to the scrollport unless the whole ancestor chain is
-       allowed to grow — without this, only the visible screenful prints. */
+    /* Print architecture, reasoned from two Chrome constraints:
+       1. Content inside overflow:scroll/auto containers is CLIPPED to the
+          scrollport when printing. The app shell (100vh flex column with
+          an inline overflowY:scroll route wrapper in app.jsx) clips every
+          screen to one visible page. Fix: force every ancestor open —
+          stylesheet !important beats inline styles.
+       2. position:absolute content does NOT reliably fragment across
+          pages in Chrome — an absolutely positioned report can print as
+          a single truncated page no matter how tall it is. Fix: print
+          the report in NORMAL STATIC FLOW and hide the app chrome with
+          display:none (removes it from layout entirely, so the report
+          starts at the top of page 1). visibility is only a fallback
+          layer for anything chrome-like that lacks a class. */
     html, body, #root { height: auto !important; overflow: visible !important; }
+    #root div {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
     body * { visibility: hidden !important; }
     .audit-page, .audit-page *,
     .nf-binder, .nf-binder * { visibility: visible !important; }
-    .audit-page { position: absolute; left: 0; top: 0; width: 100% !important; min-height: 0 !important; box-shadow: none !important; margin: 0 !important; }
-    .no-print, .nf-no-print { display: none !important; }
+    /* App chrome removed from layout, not just hidden */
+    header, .no-print, .nf-no-print, .nf-toast, #demo-banner { display: none !important; }
+    .audit-page {
+      position: static !important;
+      width: auto !important; min-height: 0 !important;
+      box-shadow: none !important; margin: 0 !important;
+    }
+    /* Keep table rows and report sections from splitting mid-row */
+    .audit-page tr { page-break-inside: avoid; }
     @page { size: letter; margin: 0.5in; }
-    /* Feature #8: print-binder layout for driver-month export */
-    .nf-binder { position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #112436; font-family: var(--font-sans); }
+    /* Print-binder layout for driver-month export: same static-flow rule */
+    .nf-binder { position: static !important; width: 100%; background: #fff; color: #112436; font-family: var(--font-sans); }
     .nf-binder-page { page-break-after: always; padding: 8mm 6mm; }
     .nf-binder-page:last-child { page-break-after: auto; }
     .nf-binder svg { max-width: 100%; height: auto; }
@@ -135,6 +157,8 @@
 </div>
 <div id="root" style="padding-top:32px"></div>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>

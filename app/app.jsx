@@ -260,7 +260,7 @@ function TabNav({ route, setRoute }) {
     { id: "maintenance", label: "Maintenance", target: { name: "maintenance" } },
   ];
   return (
-    <div style={{
+    <div className="nf-no-print" style={{
       background: "var(--white)",
       borderBottom: "1px solid var(--border)",
       padding: "0 24px",
