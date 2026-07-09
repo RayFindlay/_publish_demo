@@ -412,7 +412,7 @@ function HeartbeatIndicator() {
 
   if (!isStale) return null;
 
-  const workflowUrl = "https://github.com/RayFindlay/SFC-Automation-Project/actions/workflows/dropbox-sync.yml";
+  const workflowUrl = "https://github.com/RayFindlay/_publish_demo/actions/workflows/refresh-demo.yml";
   const minutesText = minutesSinceSync >= 60
     ? `${Math.floor(minutesSinceSync / 60)}h ${Math.floor(minutesSinceSync % 60)}m ago`
     : `${Math.floor(minutesSinceSync)}m ago`;

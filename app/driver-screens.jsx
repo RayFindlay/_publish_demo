@@ -158,7 +158,7 @@ const DriverDetail = ({ driverId, onClose, onOpenDay, onCopyLink }) => {
 // (regenerate-driver-token.yml); this UI hands off to it.
 function TokenRevocation({ drv }) {
   const [open, setOpen] = React.useState(false);
-  const workflowUrl = "https://github.com/RayFindlay/SFC-Automation-Project/actions/workflows/regenerate-driver-token.yml";
+  const workflowUrl = "https://github.com/RayFindlay/_publish_demo/actions";
 
   const handleProceed = async () => {
     // Copy the driver name to clipboard so Ray can just paste into the
