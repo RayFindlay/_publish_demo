@@ -211,17 +211,56 @@ def find_leaks_in_object(obj, real_strings, path=""):
                 yield (path, s, obj)
 
 
+def _parse_titan_time(s):
+    """Parse 'Jan 7, 2026 9:45:00 AM' -> datetime, or None."""
+    if not s:
+        return None
+    try:
+        from datetime import datetime as _dt
+        return _dt.strptime(s.strip(), "%b %d, %Y %I:%M:%S %p")
+    except Exception:
+        return None
+
+
+def _titan_day_key(r):
+    """Grouping key for one unit-day chain."""
+    if r.get("tripDate"):
+        return r["tripDate"]
+    for f in ("tripStart", "stopStart", "stopEnd"):
+        t = _parse_titan_time(r.get(f))
+        if t:
+            return t.strftime("%Y-%m-%d")
+    return "unknown"
+
+
+def _offset_km(lat, lng, km, bearing_deg):
+    """Move a [lat, lng] point km kilometres along a compass bearing."""
+    rad = math.radians(bearing_deg)
+    dlat = (km * math.cos(rad)) / 110.574
+    dlng = (km * math.sin(rad)) / (111.320 * math.cos(math.radians(lat)))
+    return round(lat + dlat, 6), round(lng + dlng, 6)
+
+
 def anonymize_titan(records):
-    out = []
-    for r in records:
-        r = dict(r)
+    """Anonymize titan records. Coordinates are NOT jittered point-by-point
+    (that breaks route continuity and looks broken when zoomed in on the
+    map). Instead each unit-day gets a SYNTHESIZED coherent route: the
+    chain starts at the fake yard, each leg's length matches the trip's
+    real recorded distance (scaled to straight-line), each trip starts
+    where the previous one ended, returns to the real day-start snap back
+    to the fake yard, and repeat visits to the same real site reuse the
+    same fake point. Directions are deterministic hashes — the fake route
+    shares nothing with the real one except leg lengths."""
+    out = [dict(r) for r in records]
+
+    # Non-coordinate anonymization (names, units, labels)
+    for r in out:
         if r.get("driver"):
             r["driver"] = fake_name_for(r["driver"])
         if r.get("unit"):
             r["unit"] = fake_unit_for(r["unit"])
         if r.get("assetName"):
             r["assetName"] = fake_unit_for(r["assetName"])
-        # Route stop and home location labels
         if r.get("startLocationName"):
             r["startLocationName"] = "Route Stop"
         if r.get("endLocationName"):
@@ -229,13 +268,57 @@ def anonymize_titan(records):
             r["endLocationName"] = (
                 FAKE_HOME_LABEL if "office" in end.lower() or "yard" in end.lower() else "Route Stop"
             )
-        # GPS coords: deterministic jitter around fake home
-        for coord_field in ("startCoords", "endCoords"):
-            c = r.get(coord_field)
-            if c and isinstance(c, dict) and "lat" in c and "lon" in c:
-                lat, lon = fake_coords_for(c["lat"], c["lon"])
-                r[coord_field] = {"lat": lat, "lon": lon}
-        out.append(r)
+
+    # Group record indexes into unit-day chains, ordered by trip time
+    chains = {}
+    for idx, r in enumerate(out):
+        key = (r.get("unit") or r.get("assetName") or "?", _titan_day_key(r))
+        chains.setdefault(key, []).append(idx)
+
+    def sort_key(idx):
+        r = out[idx]
+        t = _parse_titan_time(r.get("tripStart")) or _parse_titan_time(r.get("stopStart"))
+        return (t is None, t or 0, idx)
+
+    YARD = (FAKE_HOME_LAT, FAKE_HOME_LON)
+    for (unit, day), idxs in chains.items():
+        idxs.sort(key=sort_key)
+        cursor = YARD
+        site_memo = {}   # rounded REAL coord -> fake point (repeat-site consistency)
+        real_day_start = None
+        for chain_i, idx in enumerate(idxs):
+            r = out[idx]
+            real_start = r.get("startCoords")
+            real_end = r.get("endCoords")
+            if real_day_start is None and real_start and isinstance(real_start, dict):
+                real_day_start = (real_start["lat"], real_start["lon"])
+
+            # Trip starts where the chain currently is
+            if real_start and isinstance(real_start, dict):
+                r["startCoords"] = {"lat": cursor[0], "lon": cursor[1]}
+
+            if real_end and isinstance(real_end, dict):
+                real_end_t = (real_end["lat"], real_end["lon"])
+                memo_key = (round(real_end_t[0], 3), round(real_end_t[1], 3))
+                # Return to the real day-start (or real yard) -> fake yard
+                if real_day_start and haversine_km(*real_end_t, *real_day_start) < 0.5:
+                    end_pt = YARD
+                elif memo_key in site_memo:
+                    end_pt = site_memo[memo_key]
+                else:
+                    km = max(0.05, min((float(r.get("tripDistance") or 0)) * 0.72, 45.0))
+                    bearing = stable_int(f"leg:{unit}:{day}:{chain_i}", 360)
+                    # Bias back toward the yard when the chain wanders far,
+                    # so synthetic days stay metro-plausible
+                    dist_from_yard = haversine_km(*cursor, *YARD)
+                    if dist_from_yard > 25:
+                        home_bearing = math.degrees(math.atan2(
+                            YARD[1] - cursor[1], YARD[0] - cursor[0]))
+                        bearing = (home_bearing + (stable_int(f"jig:{unit}:{day}:{chain_i}", 120) - 60)) % 360
+                    end_pt = _offset_km(cursor[0], cursor[1], km, bearing)
+                    site_memo[memo_key] = end_pt
+                r["endCoords"] = {"lat": end_pt[0], "lon": end_pt[1]}
+                cursor = end_pt
     return out
 
 
