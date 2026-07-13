@@ -13,25 +13,19 @@ function tripDetailDistKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-const TripDetail = ({ unitId, dayISO, onClose, onPrint }) => {
-  const D = window.NORFAB_DATA;
-  const unit = D.UNITS.find(u => u.id === unitId);
-  const rawTrips = D.TRIPS.filter(t => t.unit === unitId && t.date === dayISO).sort((a, b) => a.start_min - b.start_min);
-  if (!unit || rawTrips.length === 0) {
-    return (
-      <div style={{ padding: 32 }}>
-        <Btn kind="secondary" onClick={onClose}>← Back</Btn>
-        <p style={{ marginTop: 16 }}>No trips logged for {dayISO} on {unitId}.</p>
-      </div>
-    );
-  }
-
-  // 160 km exemption measures from the DAY-START location (where the unit
-  // began its first trip), not the carrier PPB. Same anchor + annotation
-  // rule as dayCompliance in data.js; the raw adaptTrip outside_radius is
-  // PPB-based and documented there as producing nonsense per-trip.
-  const dayStart = rawTrips[0].startCoords || rawTrips.map(t => t.startCoords || t.endCoords).find(Boolean) || null;
-  const trips = rawTrips.map(t => {
+// Annotate a day's raw trips against the DAY-START location (where the first
+// trip began), not the carrier PPB. Same anchor + rule dayCompliance uses;
+// the raw adaptTrip outside_radius is PPB-based and documented there as
+// producing nonsense per-trip. Shared by the vehicle trip screen AND the
+// driver day screen so both draw identical maps and flags. Sorts internally
+// (by start_min) so callers can pass an unsorted filter result safely.
+// Returns { trips, dayStart, maxRadiusKm }.
+function annotateDayTrips(rawTrips) {
+  const sorted = [...(rawTrips || [])].sort((a, b) => a.start_min - b.start_min);
+  const dayStart = sorted.length
+    ? (sorted[0].startCoords || sorted.map(t => t.startCoords || t.endCoords).find(Boolean) || null)
+    : null;
+  const trips = sorted.map(t => {
     let d = 0;
     if (dayStart) {
       for (const c of [t.startCoords, t.endCoords]) {
@@ -47,11 +41,28 @@ const TripDetail = ({ unitId, dayISO, onClose, onPrint }) => {
       flagged: outside_radius || (t.flags && t.flags.length > 0),
     };
   });
+  const maxRadiusKm = Math.max(0, ...trips.map(t => t.dist_from_start_km || 0));
+  return { trips, dayStart, maxRadiusKm };
+}
+
+const TripDetail = ({ unitId, dayISO, onClose, onPrint }) => {
+  const D = window.NORFAB_DATA;
+  const unit = D.UNITS.find(u => u.id === unitId);
+  const rawTrips = D.TRIPS.filter(t => t.unit === unitId && t.date === dayISO);
+  if (!unit || rawTrips.length === 0) {
+    return (
+      <div style={{ padding: 32 }}>
+        <Btn kind="secondary" onClick={onClose}>← Back</Btn>
+        <p style={{ marginTop: 16 }}>No trips logged for {dayISO} on {unitId}.</p>
+      </div>
+    );
+  }
+
+  const { trips, dayStart, maxRadiusKm } = annotateDayTrips(rawTrips);
 
   const totalKm = trips.reduce((s, t) => s + t.km, 0);
   const totalMin = trips[trips.length - 1].end_min - trips[0].start_min;
   const flagged = trips.filter(t => t.flagged);
-  const maxRadiusKm = Math.max(0, ...trips.map(t => t.dist_from_start_km || 0));
   const dateLabel = new Date(dayISO + "T12:00").toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   return (
@@ -189,7 +200,7 @@ function TripMap({ trips, dayStart, maxRadiusKm }) {
     if (boundPts.length > 0) {
       map.fitBounds(L.latLngBounds(boundPts).pad(0.25), { maxZoom: 15 });
     } else {
-      map.setView([51.0553, -114.0553], 9);
+      map.setView([53.55, -113.5], 9);
     }
     L.control.scale({ imperial: false }).addTo(map);
 

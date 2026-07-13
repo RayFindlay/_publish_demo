@@ -489,6 +489,24 @@ const DayDetail = ({ driverId, dayISO, onClose }) => {
           style={{ borderLeft: "1px solid var(--border)", padding: "12px 14px" }} />
       </div>
 
+      {/* Route map. The GPS evidence for this day, same map + day-start flags
+          the vehicle trip screen draws (shared annotateDayTrips). Assembled
+          here so the driver branch is not a dead end. Rendered only when the
+          day has trips with coordinates; an idle day simply omits it. */}
+      {(() => {
+        if (typeof annotateDayTrips !== "function" || typeof TripMap === "undefined") return null;
+        const dayMap = annotateDayTrips(D.TRIPS.filter(t => t.driver === driverId && t.date === dayISO));
+        if (!dayMap.trips.length || !dayMap.dayStart) return null;
+        return (
+          <Card padding={0}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--rule)" }}><Eyebrow>Route map</Eyebrow></div>
+            <div style={{ position: "relative", height: 380 }}>
+              <TripMap trips={dayMap.trips} dayStart={dayMap.dayStart} maxRadiusKm={dayMap.maxRadiusKm} />
+            </div>
+          </Card>
+        );
+      })()}
+
       {/* Driver's Daily Log, SFC duty-status graph */}
       {c.state !== "none" && (
         <Card padding={0}>
