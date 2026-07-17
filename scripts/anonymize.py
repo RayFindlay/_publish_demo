@@ -458,7 +458,14 @@ def anonymize_fleet_meta_json(prod):
     new_vehicles = {}
     for real_unit, meta in (prod.get("vehicles") or {}).items():
         fake_unit = fake_unit_for(real_unit)
-        new_vehicles[fake_unit] = dict(meta)
+        m = dict(meta)
+        # Operator commentary (real CVIP cert numbers, vendor references,
+        # shop invoice ids) has no demo value and would break the fiction.
+        if "notes" in m:
+            m["notes"] = ""
+        if "status_note" in m:
+            m["status_note"] = ""
+        new_vehicles[fake_unit] = m
     out["vehicles"] = new_vehicles
     # Drivers: keyed by name-concat (e.g. "dustinmarriott")
     new_drivers = {}
@@ -494,6 +501,9 @@ def _scrub_brand_text(s):
     s = re.sub(r"(?i)norfab(\s+mfg)?(\s*\(1993\))?(\s*inc\.?)?", FAKE_COMPANY_SHORT, s)
     s = re.sub(r"\bNFM\b", FAKE_COMPANY_SHORT, s)
     s = s.replace("Edmonton", "Calgary")
+    # Inspection-certificate / invoice numbers (e.g. CVI-8336422, CV8167857,
+    # IN177813) are traceable to the real vehicles - mask the digits.
+    s = re.sub(r"\b(CVI?P?-?|IN)\d{5,}\b", r"\g<1>#####", s)
     return s
 
 
