@@ -149,13 +149,13 @@ const VehicleMaintenanceDetail = ({ unitId, onBack, onOpenUnit }) => {
 
           {/* Identity */}
           <div style={{ font: "600 10.5px/1 var(--font-sans)", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)" }}>
-            Vehicle maintenance · {unit.klass === "heavy" ? "NSC time-record" : "Light vehicle"}
+            Vehicle maintenance · {(unit.type || "truck") === "trailer" ? "Trailer" : unit.klass === "heavy" ? "NSC time-record" : "Light vehicle"}{unit.gps === false ? " · no GPS" : ""}
           </div>
           <div style={{ font: "700 34px/1.05 var(--font-display)", color: "#fff", letterSpacing: "-0.015em", marginTop: 8 }}>
             {unit.id}
           </div>
           <div style={{ font: "13px/1.4 var(--font-sans)", color: "rgba(255,255,255,0.75)", marginTop: 6 }}>
-            {unit.year} {unit.make} {unit.model}
+            {[unit.year, unit.make, unit.model].filter(Boolean).join(" ") || "—"}
             {unit.gvw_kg ? ` · GVW ${unit.gvw_kg.toLocaleString()} kg` : ""}
             {unit.driver ? ` · Driver: ${unit.driver}` : ""}
             {lastTitan && lastTitan.date ? ` · Last seen ${lastTitan.date}` : ""}

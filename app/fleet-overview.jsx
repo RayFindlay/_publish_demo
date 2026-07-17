@@ -4,7 +4,7 @@
 
 const { useState: useStateFO, useMemo: useMemoFO } = React;
 
-const FleetOverview = ({ onOpenDriver, onOpenDay, onOpenAudit, onOpenVehicles, onOpenExpiries, onCopyLink }) => {
+const FleetOverview = ({ onOpenDriver, onOpenDay, onOpenAudit, onOpenVehicles, onCopyLink }) => {
   const D = window.NORFAB_DATA;
   const [search, setSearch] = useStateFO("");
   const [weightFilter, setWeightFilter] = useStateFO("all");

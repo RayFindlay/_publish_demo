@@ -11,9 +11,15 @@ const VehicleList = ({ onOpenUnit, onBack }) => {
 
   const today = D.TODAY;
 
-  // Build per-unit summary rows
+  // Build per-unit summary rows. GPS-tracked units only: maintenance-only
+  // units (gps:false) are intentionally kept off this roster and live under
+  // the Maintenance section instead. Absent `gps` = tracked.
   const rows = useMemoVL(() => {
-    return D.UNITS.map(u => {
+    // CVIP due is read from the maintenance log (same source as the
+    // Maintenance section), so the roster's "expiring soon" warning agrees
+    // with "Coming up". Reg/insurance stay on fleet-meta.
+    const cvipDue = D.cvipDueMap ? D.cvipDueMap() : {};
+    return D.UNITS.filter(u => u.gps !== false).map(u => {
       const meta = D.vehicleMeta ? D.vehicleMeta(u.id) : {};
       const status = meta.status || "in_service";
       const myTrips = D.TRIPS.filter(t => t.unit === u.id);
@@ -32,7 +38,7 @@ const VehicleList = ({ onOpenUnit, onBack }) => {
       }
       const maxKm = Math.max(1, ...week.map(w => w.km));
       // Expiry warnings (any field within 30 days)
-      const cvipDays = D.daysUntil ? D.daysUntil(meta.cvip_expires) : null;
+      const cvipDays = D.daysUntil ? D.daysUntil(cvipDue[u.id] || "") : null;
       const regDays = D.daysUntil ? D.daysUntil(meta.registration_expires) : null;
       const insDays = D.daysUntil ? D.daysUntil(meta.insurance_expires) : null;
       const soonest = [cvipDays, regDays, insDays].filter(d => d != null).sort((a, b) => a - b)[0];
@@ -220,7 +226,9 @@ function VehicleCard({ row, onOpen }) {
 
       {expiryWarn && (
         <div style={{ font: "11px var(--font-sans)", color: "var(--accent-700)", fontWeight: 600, padding: "4px 8px", background: "var(--accent-100)", borderRadius: 3 }}>
-          Compliance date expiring in {soonest} day{soonest === 1 ? "" : "s"}
+          {soonest < 0
+            ? `Compliance date overdue by ${Math.abs(soonest)} day${soonest === -1 ? "" : "s"}`
+            : `Compliance date expiring in ${soonest} day${soonest === 1 ? "" : "s"}`}
         </div>
       )}
 

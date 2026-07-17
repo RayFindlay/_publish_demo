@@ -22,7 +22,7 @@ function CommandPalette({ open, onClose, onNavigate }) {
     // Screens
     all.push({ kind: "screen", id: "fleet",        label: "Drivers",             hint: "Today's driver status",       route: { name: "fleet" } });
     all.push({ kind: "screen", id: "vehicles",     label: "Fleet",               hint: "All units, status",           route: { name: "vehicles" } });
-    all.push({ kind: "screen", id: "maintenance",  label: "Maintenance",         hint: "Schedule, log, expiries",     route: { name: "maintenance" } });
+    all.push({ kind: "screen", id: "maintenance",  label: "Maintenance",         hint: "Due, defects, history",       route: { name: "maintenance" } });
     all.push({ kind: "screen", id: "audit",        label: "NSC audit export",    hint: "Print-ready binder",          route: { name: "audit" } });
     // Drivers
     for (const d of D.DRIVERS) {
@@ -31,7 +31,8 @@ function CommandPalette({ open, onClose, onNavigate }) {
     }
     // Units
     for (const u of D.UNITS) {
-      all.push({ kind: "unit", id: u.id, label: u.id, hint: `${u.year} ${u.make} ${u.model} · ${u.gvw_kg.toLocaleString()} kg ${u.klass}`, route: { name: "unit", unitId: u.id } });
+      const spec = [u.year, u.make, u.model].filter(Boolean).join(" ");
+      all.push({ kind: "unit", id: u.id, label: u.id, hint: `${spec ? spec + " · " : ""}${u.gvw_kg.toLocaleString()} kg ${u.klass}`, route: { name: "unit", unitId: u.id } });
     }
     return all;
   }, []);

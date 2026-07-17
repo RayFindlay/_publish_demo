@@ -143,7 +143,6 @@ function App() {
             onOpenDay={(id, iso) => setRoute({ name: "day", driverId: id, dayISO: iso })}
             onOpenAudit={() => setRoute({ name: "audit" })}
             onOpenVehicles={() => setRoute({ name: "vehicles" })}
-            onOpenExpiries={() => setRoute({ name: "expiries" })}
             onCopyLink={copyLink}
           />
         )}
@@ -157,18 +156,17 @@ function App() {
           <DayDetail driverId={route.driverId} dayISO={route.dayISO}
             onClose={() => setRoute({ name: "driver", driverId: route.driverId })} />
         )}
-        {route.name === "dashboard" && (
-          <Dashboard state={state} setState={setState} onNavigate={navigate} />
-        )}
         {route.name === "trip-detail" && (
           <TripDetail unitId={route.unitId} dayISO={route.dayISO}
             onClose={goBack}
+            onOpenDriverDay={(did, iso) => setRoute({ name: "day", driverId: did, dayISO: iso })}
             onPrint={() => navigate("daily-log", { unitId: route.unitId, dayISO: route.dayISO })} />
         )}
         {route.name === "unit" && (
           <UnitDetail unitId={route.unitId}
             onClose={goBack}
-            onOpenDay={(iso) => setRoute({ name: "trip-detail", unitId: route.unitId, dayISO: iso })} />
+            onOpenDay={(iso) => setRoute({ name: "trip-detail", unitId: route.unitId, dayISO: iso })}
+            onOpenDriverDay={(did, iso) => setRoute({ name: "day", driverId: did, dayISO: iso })} />
         )}
         {route.name === "daily-log-list" && (
           <LogsList state={state} dayFilter={route.dayISO}
@@ -183,12 +181,6 @@ function App() {
         {route.name === "vehicles" && window.VehicleList && (
           <window.VehicleList
             onOpenUnit={(uid) => setRoute({ name: "unit", unitId: uid })}
-            onBack={() => setRoute({ name: "fleet" })} />
-        )}
-        {route.name === "expiries" && window.Expiries && (
-          <window.Expiries
-            onOpenUnit={(uid) => setRoute({ name: "unit", unitId: uid })}
-            onOpenDriver={(did) => setRoute({ name: "driver", driverId: did })}
             onBack={() => setRoute({ name: "fleet" })} />
         )}
         {route.name === "maintenance" && window.Maintenance && (
@@ -244,12 +236,12 @@ function App() {
 // to preserve URL hashes and deep links):
 //   route "fleet"       -> tab labelled "Drivers"  (driver-centric overview)
 //   route "vehicles"    -> tab labelled "Fleet"    (unit-centric overview)
-//   route "maintenance" -> tab labelled "Maintenance" (schedule + log + expiries)
+//   route "maintenance" -> tab labelled "Maintenance" (needs attention + by vehicle + history)
 //   route "audit"       -> no tab, lives as a top-bar button now
 function activeTabFor(routeName) {
   if (routeName === "vehicles" || routeName === "unit") return "vehicles";
-  if (routeName === "maintenance" || routeName === "expiries") return "maintenance";
-  return "fleet"; // fleet + driver + day + trip-detail + daily-log-list + dashboard + audit-as-overlay
+  if (routeName === "maintenance") return "maintenance";
+  return "fleet"; // fleet + driver + day + trip-detail + daily-log-list + audit-as-overlay
 }
 
 function TabNav({ route, setRoute }) {
@@ -303,14 +295,12 @@ function TopBar({ route, onHome, onOpenAudit }) {
       const d = window.NORFAB_DATA.DRIVERS.find(x => x.id === route.driverId);
       return ["Drivers", d ? d.name : route.driverId, route.dayISO];
     }
-    if (route.name === "dashboard") return ["Drivers", "Legacy dashboard"];
     if (route.name === "trip-detail") return ["Drivers", `${route.unitId}`, `${route.dayISO}`];
     if (route.name === "unit") return ["Fleet", `Unit ${route.unitId}`];
     if (route.name === "daily-log-list") return ["Drivers", "Driver logs"];
     if (route.name === "audit") return ["NSC audit export"];
     if (route.name === "vehicles") return ["Fleet"];
     if (route.name === "maintenance") return route.unitId ? ["Maintenance", route.unitId] : ["Maintenance"];
-    if (route.name === "expiries") return ["Maintenance", "Expiries"];
     return ["Drivers"];
   })();
   return (

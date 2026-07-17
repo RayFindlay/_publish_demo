@@ -16,11 +16,20 @@
   // is preserved at the OneDrive sync target). Not used for worker links.
   const SHAREPOINT_MIRROR_BASE = ""; // DEMO: no SharePoint mirror
 
-  // Static fleet catalog, 8 units. GVW/tare confirmed by Cascade Freight.
+  // Static fleet catalog. GVW/tare confirmed by Cascade Freight.
   // klass: "heavy" if GVW >= 11,794 kg (Alberta full-log threshold), else "light".
   // Unit IDs match the anonymized codes emitted by scripts/anonymize.py
-  // (deterministic hash of real unit id → fake code).
-  // year/make/model are common enough to not identify — thousands of these.
+  // (deterministic hash of real unit id -> fake code).
+  // year/make/model are common enough to not identify - thousands of these.
+  //
+  // The first 8 are GPS-tracked (telematics). The block after them are
+  // MAINTENANCE-ONLY units: no GPS feed yet, tracked for CVIP + maintenance
+  // only. `gps: false` keeps them off the Today board and the Vehicles roster
+  // (they still appear in the Maintenance section). Consumers treat absent `gps`
+  // as tracked, so the 8 above need no change. `type` is "truck" unless stated;
+  // trailers carry `type:"trailer"` (+ a blank `linked_truck` placeholder for
+  // the future truck-trailer linkage). To promote a unit to the tracked fleet,
+  // flip `gps` to true (or remove it).
   const UNITS = [
     { id: "FDT71", year: 2007, make: "GMC",   model: "C5500 Flatbed",   gvw_kg: 23000, tare_kg: 4550, klass: "heavy", photo: "assets/units/FDT71.jpg" },
     { id: "FDT95", year: 2012, make: "Ford",  model: "F-550 Crew",      gvw_kg: 15950, tare_kg: 5000, klass: "heavy", photo: "assets/units/FDT95.jpg" },
@@ -30,6 +39,15 @@
     { id: "FPT77", year: 2011, make: "GMC",   model: "Sierra",          gvw_kg: 5000,  tare_kg: 2750, klass: "light", photo: "assets/units/FPT77.jpg" },
     { id: "FPT16", year: 2005, make: "Dodge", model: "Ram 2500",        gvw_kg: 4309,  tare_kg: 2650, klass: "light", photo: "assets/units/FPT16.jpg" },
     { id: "FPT93", year: 2012, make: "Ford",  model: "F350",            gvw_kg: 7400,  tare_kg: 3100, klass: "light", photo: "assets/units/FPT93.jpg" },
+
+    // ---- Maintenance-only (no GPS yet) ----
+    { id: "FDT91", year: 2011, make: "Peterbilt",    model: "337",              gvw_kg: 15000, tare_kg: 6000, klass: "heavy", gps: false, type: "truck" },
+    { id: "FTR91", year: 1998, make: "International", model: "4900",             gvw_kg: 16000, tare_kg: 6500, klass: "heavy", gps: false, type: "truck" },
+    { id: "FTR78", year: "",   make: "",             model: "Truck-tractor",    gvw_kg: 20000, tare_kg: 8000, klass: "heavy", gps: false, type: "truck" },
+    { id: "FTL51", year: 2008, make: "PJ",           model: "Tandem Gooseneck", gvw_kg: 12000, tare_kg: 3500, klass: "heavy", gps: false, type: "trailer", linked_truck: "" },
+    { id: "FPT31", year: "",   make: "",             model: "",                 gvw_kg: 4000,  tare_kg: 2500, klass: "light", gps: false, type: "truck" },
+    { id: "FPT28", year: 2009, make: "GMC",          model: "Sierra 1500",      gvw_kg: 3000,  tare_kg: 2400, klass: "light", gps: false, type: "truck" },
+    { id: "FPT87", year: 2011, make: "GMC",          model: "Sierra 3500HD",    gvw_kg: 6350,  tare_kg: 3200, klass: "light", gps: false, type: "truck" },
   ];
 
   // Per-driver static contact extras. Empty for now, Ray will fill in.
@@ -675,12 +693,18 @@
   }
 
   // Resolve which units a schedule rule applies to.
-  // Rule.unit can be "*" (all), "heavy", "light", or a specific unit ID.
+  // Rule.unit can be "*" (all), "cvip", "trailer", "heavy", "light", or a
+  // specific unit ID. "heavy"/"light" select TRUCKS only (never a trailer,
+  // even a heavy-classed one). "cvip" = the CVIP-required set: heavy trucks
+  // plus trailers (both need annual inspection); light trucks do not.
   function resolveScheduleUnits(rule) {
     if (!rule || !rule.unit) return [];
+    const isTrailer = u => (u.type || "truck") === "trailer";
     if (rule.unit === "*") return UNITS.map(u => u.id);
-    if (rule.unit === "heavy") return UNITS.filter(u => u.klass === "heavy").map(u => u.id);
-    if (rule.unit === "light") return UNITS.filter(u => u.klass === "light").map(u => u.id);
+    if (rule.unit === "cvip") return UNITS.filter(u => isTrailer(u) || u.klass === "heavy").map(u => u.id);
+    if (rule.unit === "trailer") return UNITS.filter(isTrailer).map(u => u.id);
+    if (rule.unit === "heavy") return UNITS.filter(u => u.klass === "heavy" && !isTrailer(u)).map(u => u.id);
+    if (rule.unit === "light") return UNITS.filter(u => u.klass === "light" && !isTrailer(u)).map(u => u.id);
     return [rule.unit];
   }
 
@@ -826,6 +850,22 @@
     return out;
   }
 
+  // CVIP due dates, sourced from the maintenance log (last logged CVIP +
+  // interval), keyed by unit id. Single source of truth for CVIP across the
+  // app: the Maintenance "Coming up" list, the Fleet roster expiry warning,
+  // and the Fleet roster warning all read this, so no two screens can disagree
+  // about whether a unit's CVIP is overdue. Units with no CVIP history are
+  // absent from the map (callers treat that as "no date on file").
+  function cvipDueMap() {
+    const out = {};
+    for (const row of maintenanceDueList()) {
+      if (String(row.item || "").toLowerCase() === "cvip" && row.due_date) {
+        out[row.unit] = row.due_date;
+      }
+    }
+    return out;
+  }
+
   // ----- Bootstrap (async): fetch latest.json + registry, populate adapter state.
   async function init() {
     const latestUrl   = window.NORFAB_LATEST_JSON_URL   || "./latest.json";
@@ -895,7 +935,7 @@
       DRIVERS, UNITS, TRIPS, YARD_MOVES, DVIR, FLEET_META, MAINTENANCE,
       dayCompliance, todayStatus, roadsideUrl, roadsideStaticUrl, roadsidePdfUrl, roadsidePhoneViewUrl, tripsForRange, minToHHMM,
       vehicleMeta, driverMeta, daysUntil, localTodayISO,
-      resolveScheduleUnits, lastLogFor, maintenanceDueList,
+      resolveScheduleUnits, lastLogFor, maintenanceDueList, cvipDueMap,
       openDefects, defectCountForUnit,
       TODAY, CALENDAR_TODAY, LATEST_DATA_DAY, LATEST_SYNC_UTC, PPB, SFC, PUBLISH_BASE,
     });

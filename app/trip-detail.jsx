@@ -45,7 +45,7 @@ function annotateDayTrips(rawTrips) {
   return { trips, dayStart, maxRadiusKm };
 }
 
-const TripDetail = ({ unitId, dayISO, onClose, onPrint }) => {
+const TripDetail = ({ unitId, dayISO, onClose, onPrint, onOpenDriverDay }) => {
   const D = window.NORFAB_DATA;
   const unit = D.UNITS.find(u => u.id === unitId);
   const rawTrips = D.TRIPS.filter(t => t.unit === unitId && t.date === dayISO);
@@ -59,6 +59,15 @@ const TripDetail = ({ unitId, dayISO, onClose, onPrint }) => {
   }
 
   const { trips, dayStart, maxRadiusKm } = annotateDayTrips(rawTrips);
+
+  // Who ACTUALLY drove this unit on this day (from the trips), not the static
+  // driver-of-record on the unit catalog. Usually one; a shared-truck day
+  // yields several. Each links to that driver's own day.
+  const driverNameOf = (id) => {
+    const d = (D.DRIVERS || []).find(x => x.id === id);
+    return (d && d.name) || (trips.find(t => t.driver === id) || {}).driver_name || id;
+  };
+  const dayDrivers = [...new Set(trips.map(t => t.driver).filter(Boolean))];
 
   const totalKm = trips.reduce((s, t) => s + t.km, 0);
   const totalMin = trips[trips.length - 1].end_min - trips[0].start_min;
@@ -77,7 +86,21 @@ const TripDetail = ({ unitId, dayISO, onClose, onPrint }) => {
               {dateLabel}
             </div>
             <div style={{ font: "14px/1.5 var(--font-sans)", color: "var(--fg-subtle)", marginTop: 4 }}>
-              {unit.year} {unit.make} {unit.model} · {unit.driver} · GVW {unit.gvw_kg.toLocaleString()} kg
+              {unit.year} {unit.make} {unit.model} · {" "}
+              {dayDrivers.length ? dayDrivers.map((did, i) => (
+                <React.Fragment key={did}>
+                  {i > 0 && ", "}
+                  <a onClick={() => onOpenDriverDay && onOpenDriverDay(did, dayISO)}
+                    title={`Open ${driverNameOf(did)}'s day`}
+                    style={{
+                      color: "var(--navy-700)", fontWeight: 600,
+                      cursor: onOpenDriverDay ? "pointer" : "default",
+                      textDecoration: onOpenDriverDay ? "underline" : "none",
+                      textDecorationThickness: "1px", textUnderlineOffset: "2px",
+                    }}>{driverNameOf(did)}</a>
+                </React.Fragment>
+              )) : unit.driver}
+              {" "}· GVW {unit.gvw_kg.toLocaleString()} kg
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>

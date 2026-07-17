@@ -1,16 +1,22 @@
-// Maintenance screen - unified view of schedule + log + compliance
-// expiries (CVIP, registration, insurance, licence, medical, abstract).
-// All "what's due" type information rolls up here.
+// Maintenance screen - what needs attention now (overdue, coming up,
+// open defects), the per-vehicle picture, and the fleet-wide service
+// history. One job per tab: Act / Browse / Look up.
 
 const { useState: useStateM, useMemo: useMemoM } = React;
 
+// Survives the deep-view remount: app.jsx keys the route container on
+// unitId, so entering/exiting a vehicle deep view unmounts this whole
+// component. Module scope keeps the last-selected tab across that.
+let MAINT_LAST_TAB = "needs";
+
 // `unitId` (optional) selects the per-vehicle deep view. Provided by
-// app.jsx route state ({name:"maintenance", unitId:"FDT12"}). When set,
+// app.jsx route state ({name:"maintenance", unitId:"FDT71"}). When set,
 // the tab body is replaced by <VehicleMaintenanceDetail>. `onExitDeepView`
 // returns to the plain maintenance section.
 const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenDeepView }) => {
   const D = window.NORFAB_DATA;
-  const [tab, setTab] = useStateM("vehicles"); // vehicles | due | defects | log
+  const [tab, _setTab] = useStateM(MAINT_LAST_TAB); // needs | vehicles | history
+  const setTab = (t) => { MAINT_LAST_TAB = t; _setTab(t); };
   const [showSchedule, setShowSchedule] = useStateM(false);
   const [scope, setScope] = useStateM("60"); // 30 | 60 | 90 | all
   const [logSort, setLogSort] = useStateM({ key: "date", dir: "desc" });
@@ -78,8 +84,8 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
     // Driver licence / medical / abstract expiries intentionally NOT
     // computed here. Those are managed by admin downstairs (the docs
     // themselves are private). The dashboard's Maintenance section
-    // stays vehicle-only; driver expiries surface elsewhere (Expiries
-    // section) when we need to track renewal cadence.
+    // stays vehicle-only; if driver renewal cadence ever needs tracking,
+    // it gets built as its own surface with real data.
 
     return items;
   }, []);
@@ -108,7 +114,13 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
   // KPI counts (unfiltered, scopeless)
   const cOverdue = dueItems.filter(i => i.date && i.days != null && i.days < 0 && !i.isObtainedDate).length;
   const c30 = dueItems.filter(i => i.date && i.days != null && i.days >= 0 && i.days <= 30 && !i.isObtainedDate).length;
-  const c60 = dueItems.filter(i => i.date && i.days != null && i.days >= 0 && i.days <= 60 && !i.isObtainedDate).length;
+  // Serviced in the last 12 months - a live health signal for the hero,
+  // unlike the lifetime log count (which only ever grows).
+  const cServiced12m = useMemoM(() => {
+    const d = new Date(); d.setFullYear(d.getFullYear() - 1);
+    const cutoff = d.toISOString().slice(0, 10);
+    return ((D.MAINTENANCE && D.MAINTENANCE.log) || []).filter(e => (e.date || "") >= cutoff).length;
+  }, []);
 
   // Missing-date breakdown straight from fleet-meta. Counts the vehicles
   // that have no CVIP / registration / insurance expiry on file. We do
@@ -117,9 +129,22 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
   // know when the document expires, which is the gap worth flagging.
   const missingByField = useMemoM(() => {
     const out = { cvip: [], registration: [], insurance: [] };
+    // Units that already have a CVIP inspection in the maintenance log. CVIP
+    // is tracked through the log (its "Coming up" due date is computed from
+    // the last logged inspection), so a unit with logged CVIP is NOT missing
+    // even when fleet-meta carries no expiry date. Only a unit with CVIP
+    // nowhere — no log entry AND no fleet-meta date — is genuinely missing.
+    const cvipLogged = new Set(
+      ((D.MAINTENANCE && D.MAINTENANCE.log) || [])
+        .filter(e => String(e.item || "").toLowerCase() === "cvip")
+        .map(e => e.unit)
+    );
     for (const u of (D.UNITS || [])) {
       const vm = D.vehicleMeta ? D.vehicleMeta(u.id) : {};
-      if (!vm.cvip_expires)         out.cvip.push(u.id);
+      // CVIP is only required for heavy trucks and trailers; light trucks
+      // (< 11,794 kg) are not subject to it, so don't flag them as "missing".
+      const cvipRequired = (u.type || "truck") === "trailer" || u.klass === "heavy";
+      if (cvipRequired && !vm.cvip_expires && !cvipLogged.has(u.id)) out.cvip.push(u.id);
       if (!vm.registration_expires) out.registration.push(u.id);
       if (!vm.insurance_expires)    out.insurance.push(u.id);
     }
@@ -257,7 +282,7 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
   }, []);
 
   // Deep view takes over the whole Maintenance section when a unit is
-  // selected via "See all" or the future By-vehicle landing tab.
+  // selected (By-vehicle card click or a Unit link in the History log).
   if (unitId && window.VehicleMaintenanceDetail) {
     return (
       <window.VehicleMaintenanceDetail
@@ -282,7 +307,7 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
               : <>{c30} compliance item{c30 === 1 ? "" : "s"} due in 30 days.</>}
           </div>
           <div style={{ font: "13px/1.4 var(--font-sans)", color: "rgba(255,255,255,0.7)", marginTop: 8 }}>
-            Per-vehicle history, what's due, open defects, and the service log. Edit maintenance.json and fleet-meta.json to update.
+            What needs attention now, the per-vehicle picture, and the fleet-wide service history. Edit maintenance.json to update.
           </div>
 
           <div style={{ marginTop: 20 }}>
@@ -290,8 +315,8 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
               background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4 }}>
               <HeroCounterM label="Overdue" value={cOverdue} sub="Past expiry / due date" tone={cOverdue ? "accent" : "muted"} />
               <HeroCounterM label="Due in 30 days" value={c30} sub="Action this month" tone={c30 ? "accent" : "ok"} divider />
-              <HeroCounterM label="Due in 60 days" value={c60} sub="Plan ahead" tone="muted" divider />
-              <HeroCounterM label="Recently serviced" value={log.length} sub="Log entries on file" tone="muted" divider />
+              <HeroCounterM label="Open defects" value={defects.length} sub="Driver-flagged on pre-trip" tone={defects.length ? "accent" : "ok"} divider />
+              <HeroCounterM label="Serviced last 12 months" value={cServiced12m} sub="Log entries, past 365 days" tone="muted" divider />
             </div>
           </div>
         </div>
@@ -300,9 +325,9 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
       {/* Sub-tabs */}
       <div style={{ background: "var(--white)", borderBottom: "1px solid var(--border)", padding: "0 24px", display: "flex", gap: 4 }}>
         {[
+          { id: "needs", label: "Needs attention" },
           { id: "vehicles", label: "By vehicle" },
-          { id: "due", label: "Timeline" },
-          { id: "defects", label: `Open defects${defects.length ? ` (${defects.length})` : ""}` },
+          { id: "history", label: "History" },
         ].map(t => {
           const isActive = tab === t.id;
           return (
@@ -323,9 +348,6 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
 
         {tab === "vehicles" && (
           <>
-            <div style={{ font: "13px/1.5 var(--font-sans)", color: "var(--fg-muted)" }}>
-              One card per vehicle, ordered by what needs attention first. Click a card to open that vehicle's full maintenance history.
-            </div>
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
@@ -344,8 +366,29 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
           </>
         )}
 
-        {tab === "due" && (
+        {tab === "needs" && (
           <>
+            {/* Critical / overdue - always visible. An empty state here is
+                good news and worth saying out loud, not hiding. */}
+            <DueSection
+              title="Critical / overdue"
+              subtitle="Past due. Address immediately."
+              tone={overdueItems.length ? "accent" : "neutral"}
+              count={overdueItems.length}>
+              {overdueItems.length === 0 ? (
+                <div style={{ padding: 32, textAlign: "center", color: "var(--fg-muted)", font: "13px var(--font-sans)" }}>
+                  Nothing overdue. All compliance items are current.
+                </div>
+              ) : (
+                <DueTable items={overdueItems}
+                  columns={["Type", "Subject", "Item", "Due", "Days overdue"]}
+                  onOpenUnit={onOpenUnit}
+                  onOpenDriver={onOpenDriver}
+                  showTypePill={true} />
+              )}
+            </DueSection>
+
+            {/* Window filter only affects Coming up, so it sits with it. */}
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <span style={{ font: "12px var(--font-sans)", color: "var(--fg-muted)", marginRight: 6 }}>Upcoming window:</span>
               <Segmented value={scope} onChange={setScope} options={[
@@ -355,24 +398,9 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
                 { v: "all", label: "All with dates" },
               ]} />
               <div style={{ marginLeft: "auto", font: "12px var(--font-sans)", color: "var(--fg-muted)" }}>
-                {overdueItems.length + vehicleUpcoming.length} item{(overdueItems.length + vehicleUpcoming.length) === 1 ? "" : "s"}
+                {vehicleUpcoming.length} item{vehicleUpcoming.length === 1 ? "" : "s"}
               </div>
             </div>
-
-            {/* Critical / overdue - only render when populated (empty is good) */}
-            {overdueItems.length > 0 && (
-              <DueSection
-                title="Critical / overdue"
-                subtitle="Past due. Address immediately."
-                tone="accent"
-                count={overdueItems.length}>
-                <DueTable items={overdueItems}
-                  columns={["Type", "Subject", "Item", "Due", "Days overdue"]}
-                  onOpenUnit={onOpenUnit}
-                  onOpenDriver={onOpenDriver}
-                  showTypePill={true} />
-              </DueSection>
-            )}
 
             {/* Coming up (CVIP, registration, insurance, scheduled maintenance) */}
             <DueSection
@@ -393,6 +421,91 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
               )}
             </DueSection>
 
+            {/* Open defects - driver-flagged issues from pre-trip DVIs.
+                Moved from its own tab: it's actionable, so it belongs on
+                the Needs-attention list. Row click opens the source DVI;
+                Close marks the defect resolved. */}
+            <DueSection
+              title="Open defects"
+              subtitle="Driver-flagged on pre-trip · click a row for the source DVI · Close marks resolved"
+              tone={defects.length ? "accent" : "neutral"}
+              count={defects.length}>
+              {defects.length === 0 ? (
+                <div style={{ padding: 32, textAlign: "center", color: "var(--fg-muted)", font: "13px var(--font-sans)" }}>
+                  No open defects. Either no drivers have flagged anything on pre-trip, or all reported defects have a matching closure in <code style={{ background: "var(--steel-50)", padding: "2px 6px", borderRadius: 2, font: "12px var(--font-mono)" }}>defects_resolved</code>.
+                </div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", font: "13px var(--font-sans)", tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: 80 }} />
+                    <col />
+                    <col style={{ width: 120 }} />
+                    <col style={{ width: 120 }} />
+                    <col style={{ width: 90 }} />
+                    <col style={{ width: 75 }} />
+                    <col style={{ width: 160 }} />
+                    <col style={{ width: 90 }} />
+                  </colgroup>
+                  <thead>
+                    <tr style={{ borderBottom: "1.5px solid var(--navy-900)" }}>
+                      {["Unit", "Defect", "First reported", "Last seen", "Open", "Reports", "Drivers", ""].map((h, hi) => (
+                        <th key={hi} style={thStyleStatic}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {defects.map((d, i) => (
+                      <tr key={i}
+                          onClick={() => { setDetailDefect(d); setDetailReportIdx(0); }}
+                          style={{ borderBottom: "1px solid var(--rule)", cursor: "pointer" }}
+                          title="Click to view the source pre-trip">
+                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", fontWeight: 600, verticalAlign: "top" }}>
+                          <button
+                            onClick={(ev) => { ev.stopPropagation(); onOpenUnit(d.unit); }}
+                            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--navy-700)", textDecoration: "underline", textUnderlineOffset: 2, font: "inherit", fontWeight: 600 }}
+                            title={`Open ${d.unit} details`}>
+                            {d.unit}
+                          </button>
+                        </td>
+                        <td style={{ padding: "10px 14px", verticalAlign: "top", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.5 }}>
+                          {d.text}
+                        </td>
+                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", verticalAlign: "top" }}>{d.first_reported || ""}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", verticalAlign: "top" }}>{d.last_seen || ""}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", verticalAlign: "top", fontWeight: 600,
+                          color: d.days_open != null && d.days_open >= 14 ? "var(--accent-700)" : "var(--navy-900)" }}>
+                          {d.days_open != null ? `${d.days_open}d` : ""}
+                        </td>
+                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", verticalAlign: "top" }}>{d.occurrences}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--fg-subtle)", verticalAlign: "top", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.5 }}>
+                          {(d.drivers || []).join(", ")}
+                        </td>
+                        <td style={{ padding: "10px 14px", verticalAlign: "top" }}>
+                          <button
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              const today = (typeof D.localTodayISO === "function") ? D.localTodayISO() : new Date().toISOString().slice(0, 10);
+                              setCloseDefect(d);
+                              setCloseForm({ text_match: d.text, resolved_date: today, notes: "" });
+                              setCloseFeedback("");
+                            }}
+                            style={{
+                              background: "var(--white)", border: "1px solid var(--rule)",
+                              padding: "5px 10px", borderRadius: 3, cursor: "pointer",
+                              font: "600 11px var(--font-sans)", color: "var(--navy-800)",
+                              letterSpacing: "0.04em",
+                            }}
+                            title="Mark this defect resolved">
+                            Close
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </DueSection>
+
             {cMissingTotal > 0 && (
               <div style={{ padding: 14, background: "var(--steel-50)", border: "1px solid var(--rule)", borderRadius: 4, font: "12px/1.6 var(--font-sans)", color: "var(--fg-subtle)" }}>
                 <div style={{ fontWeight: 600, color: "var(--navy-900)", marginBottom: 4 }}>
@@ -402,21 +515,28 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
                   <div>· CVIP expiry missing for {missingByField.cvip.length} vehicle{missingByField.cvip.length === 1 ? "" : "s"} ({missingByField.cvip.join(", ")})</div>
                 )}
                 {missingByField.registration.length > 0 && (
-                  <div>· Registration expiry missing for {missingByField.registration.length} vehicle{missingByField.registration.length === 1 ? "" : "s"} ({missingByField.registration.join(", ")})</div>
+                  <div>· {missingByField.registration.length >= (D.UNITS || []).length
+                    ? "Registration expiry not tracked yet (no dates on file)"
+                    : `Registration expiry missing for ${missingByField.registration.length} vehicle${missingByField.registration.length === 1 ? "" : "s"} (${missingByField.registration.join(", ")})`}</div>
                 )}
                 {missingByField.insurance.length > 0 && (
-                  <div>· Insurance expiry missing for {missingByField.insurance.length} vehicle{missingByField.insurance.length === 1 ? "" : "s"} ({missingByField.insurance.join(", ")})</div>
+                  <div>· {missingByField.insurance.length >= (D.UNITS || []).length
+                    ? "Insurance expiry not tracked yet (no dates on file)"
+                    : `Insurance expiry missing for ${missingByField.insurance.length} vehicle${missingByField.insurance.length === 1 ? "" : "s"} (${missingByField.insurance.join(", ")})`}</div>
                 )}
                 <div style={{ marginTop: 6, color: "var(--fg-muted)" }}>
                   CVIP next-due is also computed from the maintenance log (Coming up section above), so the CVIP gap here is informational. Registration and insurance only surface when a date is filled in.
                 </div>
               </div>
             )}
+          </>
+        )}
 
-            {/* Recent history (formerly the standalone Maintenance log tab).
-                Lives at the bottom of the Timeline so the upcoming view and
-                the past view sit on the same page. */}
-            <section style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+        {tab === "history" && (
+          <>
+            {/* Fleet-wide service log - every logged service, repair, and
+                CVIP inspection, filterable by unit, item, and time. */}
+            <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--navy-600)", display: "inline-block" }} />
                 <div style={{ font: "600 14px var(--font-sans)", color: "var(--navy-900)" }}>Recent history</div>
@@ -516,95 +636,9 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
                 )}
               </div>
             </section>
-          </>
-        )}
 
-        {tab === "defects" && (
-          <>
-            <div style={{ font: "13px/1.5 var(--font-sans)", color: "var(--fg-muted)" }}>
-              Issues drivers flagged in the Remarks field of their pre-trip inspection (SiteDocs DVI). Click a row to view the source pre-trip and any photo the driver attached. Click Close to mark a defect resolved.
-            </div>
-
-            <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 4 }}>
-              {defects.length === 0 ? (
-                <div style={{ padding: 48, textAlign: "center", color: "var(--fg-muted)" }}>
-                  No open defects. Either no drivers have flagged anything on pre-trip, or all reported defects have a matching closure in <code style={{ background: "var(--steel-50)", padding: "2px 6px", borderRadius: 2, font: "12px var(--font-mono)" }}>defects_resolved</code>.
-                </div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse", font: "13px var(--font-sans)", tableLayout: "fixed" }}>
-                  <colgroup>
-                    <col style={{ width: 80 }} />
-                    <col />
-                    <col style={{ width: 120 }} />
-                    <col style={{ width: 120 }} />
-                    <col style={{ width: 90 }} />
-                    <col style={{ width: 75 }} />
-                    <col style={{ width: 160 }} />
-                    <col style={{ width: 90 }} />
-                  </colgroup>
-                  <thead>
-                    <tr style={{ borderBottom: "1.5px solid var(--navy-900)" }}>
-                      {["Unit", "Defect", "First reported", "Last seen", "Open", "Reports", "Drivers", ""].map((h, hi) => (
-                        <th key={hi} style={thStyleStatic}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {defects.map((d, i) => (
-                      <tr key={i}
-                          onClick={() => { setDetailDefect(d); setDetailReportIdx(0); }}
-                          style={{ borderBottom: "1px solid var(--rule)", cursor: "pointer" }}
-                          title="Click to view the source pre-trip">
-                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", fontWeight: 600, verticalAlign: "top" }}>
-                          <button
-                            onClick={(ev) => { ev.stopPropagation(); onOpenUnit(d.unit); }}
-                            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--navy-700)", textDecoration: "underline", textUnderlineOffset: 2, font: "inherit", fontWeight: 600 }}
-                            title={`Open ${d.unit} details`}>
-                            {d.unit}
-                          </button>
-                        </td>
-                        <td style={{ padding: "10px 14px", verticalAlign: "top", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.5 }}>
-                          {d.text}
-                        </td>
-                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", verticalAlign: "top" }}>{d.first_reported || ""}</td>
-                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", verticalAlign: "top" }}>{d.last_seen || ""}</td>
-                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", verticalAlign: "top", fontWeight: 600,
-                          color: d.days_open != null && d.days_open >= 14 ? "var(--accent-700)" : "var(--navy-900)" }}>
-                          {d.days_open != null ? `${d.days_open}d` : ""}
-                        </td>
-                        <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", verticalAlign: "top" }}>{d.occurrences}</td>
-                        <td style={{ padding: "10px 14px", color: "var(--fg-subtle)", verticalAlign: "top", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.5 }}>
-                          {(d.drivers || []).join(", ")}
-                        </td>
-                        <td style={{ padding: "10px 14px", verticalAlign: "top" }}>
-                          <button
-                            onClick={(ev) => {
-                              ev.stopPropagation();
-                              const today = (typeof D.localTodayISO === "function") ? D.localTodayISO() : new Date().toISOString().slice(0, 10);
-                              setCloseDefect(d);
-                              setCloseForm({ text_match: d.text, resolved_date: today, notes: "" });
-                              setCloseFeedback("");
-                            }}
-                            style={{
-                              background: "var(--white)", border: "1px solid var(--rule)",
-                              padding: "5px 10px", borderRadius: 3, cursor: "pointer",
-                              font: "600 11px var(--font-sans)", color: "var(--navy-800)",
-                              letterSpacing: "0.04em",
-                            }}
-                            title="Mark this defect resolved">
-                            Close
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Footer link: schedule rules (collapsed by default) */}
+            {/* Schedule rules (collapsed by default). Reference data, so it
+                lives on the History tab only instead of on every tab. */}
         <div style={{ marginTop: 12, paddingTop: 14, borderTop: "1px solid var(--rule)" }}>
           <button
             onClick={() => setShowSchedule(s => !s)}
@@ -663,6 +697,8 @@ const Maintenance = ({ onOpenUnit, onOpenDriver, unitId, onExitDeepView, onOpenD
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
 
       {detailDefect && (
@@ -724,18 +760,18 @@ function VehicleSummaryCard({ summary, onClick }) {
             {unit.id}
           </div>
           <div style={{ font: "12px/1.4 var(--font-sans)", color: "var(--fg-muted)", marginTop: 2 }}>
-            {unit.year} {unit.make} {unit.model}
+            {[unit.year, unit.make, unit.model].filter(Boolean).join(" ") || "—"}
             {unit.driver ? ` · ${unit.driver}` : ""}
           </div>
         </div>
         <span style={{
           font: "600 10px var(--font-sans)", letterSpacing: "0.1em", textTransform: "uppercase",
           padding: "2px 6px", borderRadius: 2,
-          background: unit.klass === "heavy" ? "#FDECE3" : "#E8EEF6",
-          color: unit.klass === "heavy" ? "var(--accent-700)" : "var(--navy-800)",
+          background: (unit.type || "truck") === "trailer" ? "#ECE7F3" : unit.klass === "heavy" ? "#FDECE3" : "#E8EEF6",
+          color: (unit.type || "truck") === "trailer" ? "#5A4A86" : unit.klass === "heavy" ? "var(--accent-700)" : "var(--navy-800)",
           whiteSpace: "nowrap",
         }}>
-          {unit.klass === "heavy" ? "Heavy NSC" : "Light"}
+          {(unit.type || "truck") === "trailer" ? "Trailer" : unit.klass === "heavy" ? "Heavy NSC" : "Light"}
         </span>
       </div>
 

@@ -256,7 +256,7 @@ function DriverHero({ drv, unit, comp }) {
       {/* Full-width hero photo, ~200px tall. Officers can identify the
           vehicle at a glance before reading anything. Falls back to a
           subtle gradient + unit ID badge when no photo is on file
-          (currently FPT21 and FPT23). */}
+          (currently FPT77 and FPT93). */}
       {hasPhoto ? (
         <div style={{
           position: "relative", width: "100%", height: 200,

@@ -82,7 +82,7 @@
   // ---- URL state ----
   // Hash format:
   //   #fleet | #driver/<id> | #day/<id>/<iso> | #unit/<id>
-  //   #audit | #dashboard | #vehicles | #expiries
+  //   #audit | #vehicles
   //   #maintenance | #maintenance/vehicle/<id>
   function routeToHash(r) {
     if (!r) return "#";
@@ -91,10 +91,8 @@
     if (r.name === "day") return `#day/${r.driverId}/${r.dayISO}`;
     if (r.name === "unit") return `#unit/${r.unitId}`;
     if (r.name === "audit") return "#audit";
-    if (r.name === "dashboard") return "#dashboard";
     if (r.name === "trip-detail") return `#trip/${r.unitId}/${r.dayISO}`;
     if (r.name === "vehicles") return "#vehicles";
-    if (r.name === "expiries") return "#expiries";
     if (r.name === "maintenance") return r.unitId ? `#maintenance/vehicle/${r.unitId}` : "#maintenance";
     return "#";
   }
@@ -107,9 +105,7 @@
     if (head === "unit" && a) return { name: "unit", unitId: a };
     if (head === "trip" && a && b) return { name: "trip-detail", unitId: a, dayISO: b };
     if (head === "audit") return { name: "audit" };
-    if (head === "dashboard") return { name: "dashboard" };
     if (head === "vehicles") return { name: "vehicles" };
-    if (head === "expiries") return { name: "expiries" };
     if (head === "maintenance") {
       if (a === "vehicle" && b) return { name: "maintenance", unitId: b };
       return { name: "maintenance" };

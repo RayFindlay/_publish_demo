@@ -1,8 +1,18 @@
 // Unit Detail screen, equipment specs, recent activity, flag history.
 
-const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
+const UnitDetail = ({ unitId, onClose, onOpenDay, onOpenDriverDay }) => {
   const D = window.NORFAB_DATA;
   const unit = D.UNITS.find(u => u.id === unitId);
+  // Month shown in the activity browser. Defaults to the unit's most recent
+  // active month. Declared BEFORE the early return so the hook order is
+  // stable (rules of hooks). Depends only on unitId, not the unit object.
+  const [ym, setYm] = React.useState(() => {
+    const dates = D.TRIPS.filter(t => t.unit === unitId).map(t => t.date).sort();
+    const base = dates.length ? dates[dates.length - 1]
+      : (D.localTodayISO ? D.localTodayISO() : "2026-07-01");
+    const [y, m] = base.split("-").map(Number);
+    return { y, m: m - 1 };
+  });
   if (!unit) return null;
 
   // Real trips for this unit (have an assigned driver). Yard moves are
@@ -26,6 +36,40 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
   const totalKm90 = recent.reduce((s, t) => s + t.km, 0);
   const flagged90 = recent.filter(t => t.flagged);
   const days90 = new Set(recent.map(t => t.date)).size;
+
+  // Activity grouped by day, newest first — one row per day the unit was
+  // driven, so "who drove this truck on <date>" is answerable however far
+  // back you scroll. Replaces the old 12-row per-trip table that showed no
+  // driver and could not reach beyond a week or two. allTrips is already
+  // sorted newest-first, so Map insertion order preserves that.
+  const driverNameOf = (id) => {
+    const d = D.DRIVERS.find(x => x.id === id);
+    return (d && d.name) || (allTrips.find(t => t.driver === id) || {}).driver_name || id;
+  };
+  const activityByDay = (() => {
+    const m = new Map();
+    for (const t of allTrips) {
+      if (!m.has(t.date)) m.set(t.date, []);
+      m.get(t.date).push(t);
+    }
+    return Array.from(m.entries()).map(([date, ts]) => {
+      const counts = {};
+      ts.forEach(t => { counts[t.driver] = (counts[t.driver] || 0) + 1; });
+      const drivers = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+      return {
+        date,
+        drivers,
+        primary: drivers[0],
+        trips: ts.length,
+        km: ts.reduce((s, t) => s + (t.km || 0), 0),
+        flagged: ts.some(t => t.flagged || t.outside_radius),
+      };
+    });
+  })();
+  // One month at a time so an active truck never becomes a 500-row scroll.
+  const monthPrefix = `${ym.y}-${String(ym.m + 1).padStart(2, "0")}`;
+  const monthLabel = new Date(ym.y, ym.m, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthDays = activityByDay.filter(d => d.date.startsWith(monthPrefix));
 
   // Pick the most recent active day for this unit. Find the driver who drove
   // it (most trips that day wins) and grab their Pre/Post DVIs for that day.
@@ -60,10 +104,10 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
               </div>
             )}
             <div>
-              <Eyebrow>Unit · {unit.klass === "heavy" ? "NSC time-record" : "Light vehicle"}</Eyebrow>
+              <Eyebrow>{(unit.type || "truck") === "trailer" ? "Trailer" : "Unit"} · {unit.gps === false ? "Maintenance-only · no GPS" : unit.klass === "heavy" ? "NSC time-record" : "Light vehicle"}</Eyebrow>
               <div style={{ font: "700 36px/1.05 var(--font-display)", color: "var(--navy-900)", letterSpacing: "-0.015em", marginTop: 6 }}>{unit.id}</div>
               <div style={{ font: "16px/1.4 var(--font-sans)", color: "var(--fg-subtle)", marginTop: 4 }}>
-                {unit.year} {unit.make} {unit.model}
+                {[unit.year, unit.make, unit.model].filter(Boolean).join(" ") || "—"}
               </div>
             </div>
           </div>
@@ -84,7 +128,17 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
             </Pill>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
-            {[
+            {/* Maintenance-only (gps:false) units don't have GPS telemetry, so
+                the plate/VIN/odometer/last-inspection below were fabricated and
+                would be misleading. Show honest spec rows for them instead. */}
+            {(unit.gps === false ? [
+              ["Type", (unit.type || "truck") === "trailer" ? "Trailer" : "Truck"],
+              ["Class", unit.klass === "heavy" ? "≥ 11,794 kg (NSC)" : "< 11,794 kg (Light)"],
+              ["Year / Make / Model", [unit.year, unit.make, unit.model].filter(Boolean).join(" ") || "—"],
+              ["CVIP", ((unit.type || "truck") === "trailer" || unit.klass === "heavy") ? "Required (annual)" : "Not required (light)"],
+              ...((unit.type || "truck") === "trailer" ? [["Linked truck", unit.linked_truck || "Not linked"]] : []),
+              ["Tracking", "Maintenance-only · no GPS feed"],
+            ] : [
               ["Class", unit.klass === "heavy" ? "≥ 11,794 kg (NSC)" : "< 11,794 kg (Light)"],
               ["Operating area", unit.klass === "heavy" ? "160 km radius (AB exempt)" : "Local Calgary & area"],
               ["Driver of record", unit.driver],
@@ -93,10 +147,10 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
               ["VIN", "1FDXX0000NXXX" + unit.id.slice(-3)],
               ["Last odometer", (unit.odo || 142000).toLocaleString() + " km"],
               ["Last inspection", "Apr 18, 2026"],
-            ].map(([k, v], i) => (
+            ]).map(([k, v], i, arr) => (
               <div key={k} style={{
                 padding: "12px 18px",
-                borderBottom: i < 6 ? "1px solid var(--rule)" : "none",
+                borderBottom: i < arr.length - (arr.length % 2 === 0 ? 2 : 1) ? "1px solid var(--rule)" : "none",
                 borderRight: i % 2 === 0 ? "1px solid var(--rule)" : "none",
               }}>
                 <Eyebrow style={{ marginBottom: 4 }}>{k}</Eyebrow>
@@ -106,6 +160,17 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
           </div>
         </Card>
 
+        {unit.gps === false ? (
+          <Card padding={0}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--rule)" }}>
+              <Eyebrow>Activity</Eyebrow>
+            </div>
+            <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--fg-muted)", font: "13px/1.6 var(--font-sans)" }}>
+              <div style={{ fontWeight: 600, color: "var(--navy-900)" }}>No GPS telematics</div>
+              <div style={{ marginTop: 4 }}>Maintenance-only unit. Tracked below for CVIP and service history, not trip activity.</div>
+            </div>
+          </Card>
+        ) : (
         <Card padding={0}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--rule)" }}>
             <Eyebrow>Last 90 days</Eyebrow>
@@ -131,8 +196,10 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
               style={{ borderLeft: "none", padding: "14px 18px" }} />
           </div>
         </Card>
+        )}
       </div>
 
+      {unit.gps !== false && (<>
       {/* Duty-status graph for this unit's most recent active day. The day's
           primary driver (most trips wins ties) is the anchor; their pre/post
           DVIs for the day populate the shoulders. If the unit has no recent
@@ -169,39 +236,65 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
       {/* Recent activity table + Flag log */}
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20 }}>
         <Card padding={0}>
-          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--rule)" }}>
-            <Eyebrow>Recent trips</Eyebrow>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--rule)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Btn kind="icon" size="sm" title="Previous month" onClick={() => setYm(s => { const dt = new Date(s.y, s.m - 1, 1); return { y: dt.getFullYear(), m: dt.getMonth() }; })}><Icon name="chevron-left" size={14} /></Btn>
+              <div style={{ font: "600 14px var(--font-sans)", color: "var(--navy-900)", minWidth: 132, textAlign: "center" }}>{monthLabel}</div>
+              <Btn kind="icon" size="sm" title="Next month" onClick={() => setYm(s => { const dt = new Date(s.y, s.m + 1, 1); return { y: dt.getFullYear(), m: dt.getMonth() }; })}><Icon name="chevron-right" size={14} /></Btn>
+            </div>
+            <span style={{ font: "11.5px var(--font-sans)", color: "var(--fg-muted)" }}>
+              {monthDays.length} day{monthDays.length === 1 ? "" : "s"} driven
+            </span>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", font: "13px var(--font-sans)" }}>
-            <thead>
-              <tr style={{ background: "var(--steel-50)", borderBottom: "1px solid var(--rule)" }}>
-                {["Date", "Time", "From", "To", "Km", "Status"].map(h => (
-                  <th key={h} style={{ textAlign: "left", padding: "8px 14px", font: "600 10.5px var(--font-sans)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--fg-muted)" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {allActivity.slice(0, 12).map((t, i) => (
-                <tr key={`a-${i}`} style={{ borderBottom: "1px solid var(--rule)", cursor: t._isYardMove ? "default" : "pointer" }}
-                  onClick={t._isYardMove ? undefined : () => onOpenDay?.(t.date)}
-                  onMouseEnter={e => e.currentTarget.style.background = "var(--steel-50)"}
-                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                  <td style={{ padding: "10px 14px", font: "500 13px var(--font-mono)" }}>{t.date}</td>
-                  <td style={{ padding: "10px 14px", color: "var(--fg-subtle)" }}>{D.minToHHMM(t.start_min)}</td>
-                  <td style={{ padding: "10px 14px" }}>{window.LocationCell ? <window.LocationCell name={t.start_site} coords={t.startCoords} /> : (t.start_site || "")}</td>
-                  <td style={{ padding: "10px 14px" }}>{window.LocationCell ? <window.LocationCell name={t.end_site} coords={t.endCoords} /> : (t.end_site || "")}</td>
-                  <td style={{ padding: "10px 14px", textAlign: "right", font: "500 13px var(--font-mono)" }}>{t.km.toFixed(1)}</td>
-                  <td style={{ padding: "10px 14px" }}>
-                    {t._isYardMove
-                      ? <Pill tone="neutral">In-yard move</Pill>
-                      : t.flagged
-                        ? <Pill tone="flag">{t.outside_radius ? "Outside radius" : ((t.flags && t.flags[0]) || "Flagged")}</Pill>
-                        : <Pill tone="ok"><Dot tone="ok" size={6} />Compliant</Pill>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {activityByDay.length === 0 ? (
+            <div style={{ padding: "24px 18px", color: "var(--fg-muted)", font: "13px var(--font-sans)" }}>
+              No recorded trips for this unit.
+            </div>
+          ) : monthDays.length === 0 ? (
+            <div style={{ padding: "24px 18px", color: "var(--fg-muted)", font: "13px var(--font-sans)" }}>
+              No trips in {monthLabel}. Use the arrows to reach an active month.
+            </div>
+          ) : (
+            <div style={{ maxHeight: 480, overflowY: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", font: "13px var(--font-sans)" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--rule)" }}>
+                    {["Date", "Driver", "Trips", "Distance", "Status"].map((h, i) => (
+                      <th key={h} style={{ textAlign: (i === 2 || i === 3) ? "right" : "left", padding: "8px 14px", font: "600 10.5px var(--font-sans)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--fg-muted)", background: "var(--steel-50)", position: "sticky", top: 0 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthDays.map(d => (
+                    <tr key={d.date} style={{ borderBottom: "1px solid var(--rule)", cursor: "pointer" }}
+                      onClick={() => onOpenDay?.(d.date)}
+                      onMouseEnter={e => e.currentTarget.style.background = "var(--steel-50)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <td style={{ padding: "10px 14px", font: "500 13px var(--font-mono)" }}>{d.date}</td>
+                      <td style={{ padding: "10px 14px" }}>
+                        <a onClick={e => { e.stopPropagation(); onOpenDriverDay && onOpenDriverDay(d.primary, d.date); }}
+                          title={`Open ${driverNameOf(d.primary)}'s day`}
+                          style={{ color: "var(--navy-700)", fontWeight: 600, cursor: onOpenDriverDay ? "pointer" : "default", textDecoration: onOpenDriverDay ? "underline" : "none", textDecorationThickness: "1px", textUnderlineOffset: "2px" }}>
+                          {driverNameOf(d.primary)}
+                        </a>
+                        {d.drivers.length > 1 && (
+                          <span style={{ color: "var(--fg-muted)", fontSize: 12, marginLeft: 4 }}
+                            title={d.drivers.map(driverNameOf).join(", ")}>+{d.drivers.length - 1}</span>
+                        )}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "right", font: "500 13px var(--font-mono)" }}>{d.trips}</td>
+                      <td style={{ padding: "10px 14px", textAlign: "right", font: "500 13px var(--font-mono)" }}>{d.km.toFixed(1)} km</td>
+                      <td style={{ padding: "10px 14px" }}>
+                        {d.flagged
+                          ? <Pill tone="flag">Flagged</Pill>
+                          : <Pill tone="ok"><Dot tone="ok" size={6} />Compliant</Pill>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
 
         <Card padding={0}>
@@ -241,6 +334,7 @@ const UnitDetail = ({ unitId, onClose, onOpenDay }) => {
           )}
         </Card>
       </div>
+      </>)}
 
       {/* Maintenance for this specific unit - next 3 due + last 5 events */}
       <UnitMaintenanceCard unitId={unitId} />
