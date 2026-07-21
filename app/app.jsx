@@ -129,6 +129,17 @@ function App() {
     setTimeout(() => setToast(null), 2400);
   };
 
+  // Toast with a managed timer. ms=null keeps it up (sticky, e.g. the voice
+  // "Listening…"/"Thinking…" states); a later call replaces it cleanly.
+  const toastTimerRef = React.useRef(null);
+  const showToast = (msg, ms = 2400) => {
+    if (toastTimerRef.current) { clearTimeout(toastTimerRef.current); toastTimerRef.current = null; }
+    setToast(msg == null ? null : msg);
+    if (msg != null && typeof ms === "number" && isFinite(ms) && ms > 0) {
+      toastTimerRef.current = setTimeout(() => setToast(null), ms);
+    }
+  };
+
   // Tweaks panel
   const [tweaks, setTweak] = window.useTweaks ? window.useTweaks(TWEAKS) : [TWEAKS, () => {}];
 
@@ -201,6 +212,14 @@ function App() {
         <window.CommandPalette open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
           onNavigate={(r) => setRoute(r)} />
+      )}
+
+      {window.VoiceController && (
+        <window.VoiceController
+          onNavigate={(r) => setRoute(r)}
+          onToast={showToast}
+          route={route}
+          suspended={paletteOpen || !!modal} />
       )}
 
       {toast && (
